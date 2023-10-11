@@ -1,3 +1,5 @@
+package Token;
+
 import java.util.HashMap;
 
 public class Token {

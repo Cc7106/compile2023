@@ -1,3 +1,6 @@
+import GrammarTypes.CompUnit;
+import Token.Token;
+
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -25,10 +28,16 @@ public class IOFiles {
         return inputText.toString();
     }
 
-    public void writeToFile(ArrayList<Token> tokenArrayList) throws IOException {
-        for (Token token: tokenArrayList) {
-            writer.write(token.toString() + "\n");
-        }
+//    public void writeToFile(ArrayList<Token> tokenArrayList) throws IOException {
+//        for (Token token: tokenArrayList) {
+//            writer.write(token.toString() + "\n");
+//        }
+//        writer.flush();
+//        writer.close();
+//    }
+
+    public void writeToFile2(CompUnit compUnit) throws IOException {
+        writer.write(compUnit.toString());
         writer.flush();
         writer.close();
     }

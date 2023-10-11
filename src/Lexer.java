@@ -1,3 +1,5 @@
+import Token.Token;
+
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -178,9 +180,9 @@ public class Lexer {
 
     public void error() { }
 
-    public void printResult() throws IOException {
-        ioFiles.writeToFile(tokenList);
-    }
+//    public void printResult() throws IOException {
+//        ioFiles.writeToFile(tokenList);
+//    }
 
     public ArrayList<Token> getTokenList() {
         return tokenList;

@@ -1,3 +1,5 @@
+package Token;
+
 public enum TokenType {
     IDENFR,
     INTCON,
