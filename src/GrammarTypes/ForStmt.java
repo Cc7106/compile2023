@@ -5,7 +5,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class ForStmt implements Node {
+public class ForStmt extends Node {
     //ForStmt → LVal '=' Exp
     private LVal lVal;
 

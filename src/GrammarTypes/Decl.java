@@ -2,7 +2,7 @@ package GrammarTypes;
 
 import java.util.StringJoiner;
 
-public class Decl implements Node {
+public class Decl extends Node {
     // Decl → ConstDecl
     // Decl → VarDecl
     private ConstDecl constDecl;

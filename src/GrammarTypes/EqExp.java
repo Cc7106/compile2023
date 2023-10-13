@@ -3,7 +3,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class EqExp implements Node {
+public class EqExp extends Node {
     // EqExp → RelExp
     // EqExp -> RelExp ('==' | '!=') EqExp
     private RelExp relExp;

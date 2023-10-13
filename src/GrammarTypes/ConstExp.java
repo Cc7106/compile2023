@@ -2,7 +2,7 @@ package GrammarTypes;
 
 import java.util.StringJoiner;
 
-public class ConstExp implements Node {
+public class ConstExp extends Node {
     //ConstExp → AddExp
     private AddExp addExp;
 

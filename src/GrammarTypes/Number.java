@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class Number implements Node {
+public class Number extends Node {
     //Number → IntConst
     private Token intConst;
 

@@ -2,7 +2,7 @@ package GrammarTypes;
 
 import java.util.StringJoiner;
 
-public class Cond implements Node {
+public class Cond extends Node {
     //Cond → LOrExp
     private LOrExp lOrExp;
 

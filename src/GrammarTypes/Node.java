@@ -5,10 +5,13 @@ import Token.Token;
 import java.util.ArrayList;
 import java.util.StringJoiner;
 
-public interface Node {
-    String toString();
+public class Node {
+    //private static final ArrayList<Error> errorsList = new ArrayList<>();
+    public String toString() {
+        return "";
+    }
 
-    default String declCommasString(ArrayList<Node> list, ArrayList<Token> commasList, Token semicn, String type) {
+    public String declCommasString(ArrayList<Node> list, ArrayList<Token> commasList, Token semicn, String type) {
         StringJoiner output = new StringJoiner("\n");
         output.add(list.get(0).toString());
 
@@ -28,7 +31,7 @@ public interface Node {
         return output.toString();
     }
 
-   default String defString(Token ident, Token LBrack1, Node exp1, Token RBrack1, Token LBrack2,
+   public String defString(Token ident, Token LBrack1, Node exp1, Token RBrack1, Token LBrack2,
                             Node exp2, Token RBrack2, Token equal, Node initVal, String type) {
        StringJoiner output = new StringJoiner("\n");
        output.add(ident.toString());
@@ -51,7 +54,7 @@ public interface Node {
        return output.toString();
    }
 
-    default String expString(Node exp1, Token midToken, Node exp2, String expType) {
+    public String expString(Node exp1, Token midToken, Node exp2, String expType) {
         StringJoiner output = new StringJoiner("\n");
         output.add(exp1.toString());
         output.add("<" + expType + ">");
@@ -62,7 +65,7 @@ public interface Node {
         return output.toString();
     }
 
-    default String initValString(Node exp, Token LBrace, ArrayList<Node> list, ArrayList<Token> commasList, Token RBrace, String type) {
+    public String initValString(Node exp, Token LBrace, ArrayList<Node> list, ArrayList<Token> commasList, Token RBrace, String type) {
         StringJoiner output = new StringJoiner("\n");
         if (exp != null) {
             output.add(exp.toString());
@@ -81,4 +84,9 @@ public interface Node {
         output.add("<" + type + ">");
         return output.toString();
     }
+
+//    //public void addError(Error error) {
+//        errorsList.add(error);
+//    }
+
 }

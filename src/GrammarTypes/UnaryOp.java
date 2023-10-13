@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class UnaryOp implements Node {
+public class UnaryOp extends Node {
     //UnaryOp → '+' | '−' | '!'
 
     private Token op;

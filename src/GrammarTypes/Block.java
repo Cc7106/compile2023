@@ -5,7 +5,7 @@ import Token.Token;
 import java.util.ArrayList;
 import java.util.StringJoiner;
 
-public class Block implements Node {
+public class Block extends Node {
     //Block → '{' { BlockItem } '}'
     private Token LBrace;
     private ArrayList<BlockItem> blockItemsList;

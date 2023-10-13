@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class UnaryExp implements Node {
+public class UnaryExp extends Node {
     //UnaryExp → PrimaryExp
     //UnaryExp → Ident '(' [FuncRParams] ')'
     //UnaryExp → UnaryOp UnaryExp

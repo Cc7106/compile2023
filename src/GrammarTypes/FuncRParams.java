@@ -5,7 +5,7 @@ import Token.Token;
 import java.util.ArrayList;
 import java.util.StringJoiner;
 
-public class FuncRParams implements Node {
+public class FuncRParams extends Node {
     //FuncRParams → Exp { ',' Exp }
 
     private ArrayList<Exp> expsList;

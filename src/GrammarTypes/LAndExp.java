@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class LAndExp implements Node {
+public class LAndExp extends Node {
     //LAndExp → EqExp
     //LAndExp → EqExp '&&' LAndExp
     private EqExp eqExp;

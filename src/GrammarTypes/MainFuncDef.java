@@ -5,7 +5,7 @@ import Token.Token;
 import java.util.ArrayList;
 import java.util.StringJoiner;
 
-public class MainFuncDef implements Node {
+public class MainFuncDef extends Node {
     //MainFuncDef → 'int' 'main' '(' ')' Block
     private Token intTk;
     private Token mainTk;

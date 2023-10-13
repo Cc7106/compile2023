@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class VarDef implements Node {
+public class VarDef extends Node {
     // VarDef → Ident { '[' ConstExp ']' }
     // VarDef → Ident { '[' ConstExp ']' } '=' InitVal
 

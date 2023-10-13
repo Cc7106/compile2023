@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class Btype implements Node {
+public class Btype extends Node {
     private Token intTk;
 
     public Btype(Token intTk) {

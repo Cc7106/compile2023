@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class FuncType implements Node {
+public class FuncType extends Node {
     //FuncType → 'void' | 'int'
     private Token funcType;
 

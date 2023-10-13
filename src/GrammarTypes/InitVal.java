@@ -5,7 +5,7 @@ import Token.Token;
 import java.util.ArrayList;
 import java.util.StringJoiner;
 
-public class InitVal implements Node {
+public class InitVal extends Node {
     // InitVal → Exp
     // InitVal → '{' [ InitVal { ',' InitVal } ] '}' // { , , }
     // InitVal → '{' [ InitVal { ',' InitVal } ] '}' // { {} , {}}

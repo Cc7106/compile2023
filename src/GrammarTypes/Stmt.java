@@ -5,7 +5,7 @@ import Token.Token;
 import java.util.ArrayList;
 import java.util.StringJoiner;
 
-public class Stmt implements Node {
+public class Stmt extends Node {
     // Stmt → LVal '=' Exp ';'
     // Stmt → [Exp] ';'
     // Stmt → Block

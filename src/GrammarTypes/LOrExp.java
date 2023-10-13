@@ -3,7 +3,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class LOrExp implements Node {
+public class LOrExp extends Node {
 
     //LOrExp → LAndExp
     //LOrExp → LAndExp '||' LOrExp

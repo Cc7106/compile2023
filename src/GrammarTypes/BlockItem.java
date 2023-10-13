@@ -2,7 +2,7 @@ package GrammarTypes;
 
 import java.util.StringJoiner;
 
-public class BlockItem implements Node {
+public class BlockItem extends Node {
     //BlockItem → Decl
     //BlockItem → Stmt
 

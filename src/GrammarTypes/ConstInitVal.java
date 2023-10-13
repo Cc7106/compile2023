@@ -5,7 +5,7 @@ import Token.Token;
 import java.util.ArrayList;
 import java.util.StringJoiner;
 
-public class ConstInitVal implements Node {
+public class ConstInitVal extends Node {
     // ConstInitVal → ConstExp
     // ConstInitVal → '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
     private ConstExp constExp;

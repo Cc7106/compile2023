@@ -5,7 +5,7 @@ import Token.Token;
 import java.util.ArrayList;
 import java.util.StringJoiner;
 
-public class VarDecl implements Node {
+public class VarDecl extends Node {
     // VarDecl → BType VarDef { ',' VarDef } ';'
     private Btype btype;
     private ArrayList<VarDef> varDef;

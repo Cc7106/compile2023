@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class RelExp implements Node {
+public class RelExp extends Node {
     //RelExp → AddExp
     //RelExp → AddExp ('<' | '>' | '<=' | '>=') RelExp
 

@@ -5,7 +5,7 @@ import Token.Token;
 import java.util.ArrayList;
 import java.util.StringJoiner;
 
-public class FuncFParams implements Node {
+public class FuncFParams extends Node {
     // FuncFParams → FuncFParam { ',' FuncFParam }
     private ArrayList<FuncFParam> funcFParamList;
 

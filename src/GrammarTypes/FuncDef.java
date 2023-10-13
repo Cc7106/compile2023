@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class FuncDef implements Node {
+public class FuncDef extends Node {
     // FuncDef → FuncType Ident '(' [FuncFParams] ')' Block
     private FuncType funcType;
     private Token ident;

@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class LVal implements Node {
+public class LVal extends Node {
     // LVal → Ident
     // LVal → Ident '[' Exp ']'
     // LVal → Ident '[' Exp ']''[' Exp ']'

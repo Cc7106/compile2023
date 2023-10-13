@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class FuncFParam implements Node {
+public class FuncFParam extends Node {
     // FuncFParam → BType Ident
     // FuncFParam → BType Ident '[' ']'
     // FuncFParam → BType Ident '[' ']''[' ConstExp ']'

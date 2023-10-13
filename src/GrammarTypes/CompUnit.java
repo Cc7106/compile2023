@@ -3,7 +3,7 @@ package GrammarTypes;
 import java.util.ArrayList;
 import java.util.StringJoiner;
 
-public class CompUnit implements Node {
+public class CompUnit extends Node {
     // CompUnit → {Decl} {FuncDef} MainFuncDef
     private ArrayList<Decl> declList;
     private ArrayList<FuncDef> funcDefList;

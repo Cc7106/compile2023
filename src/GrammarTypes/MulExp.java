@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class MulExp implements Node {
+public class MulExp extends Node {
     // MulExp → UnaryExp
     // MulExp → UnaryExp ('*' | '/' | '%') MulExp
     private UnaryExp unaryExp;

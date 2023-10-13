@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class ConstDef implements Node {
+public class ConstDef extends Node {
     // ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal
     private Token ident;
     private Token LBrack1;

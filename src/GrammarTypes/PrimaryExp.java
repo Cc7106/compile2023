@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class PrimaryExp implements Node {
+public class PrimaryExp extends Node {
     // PrimaryExp → '(' Exp ')'
     // PrimaryExp → LVal
     // PrimaryExp → Number

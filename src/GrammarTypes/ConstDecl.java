@@ -5,7 +5,7 @@ import Token.Token;
 import java.util.ArrayList;
 import java.util.StringJoiner;
 
-public class ConstDecl implements Node {
+public class ConstDecl extends Node {
     // ConstDecl → 'const' BType ConstDef { ',' ConstDef } ';'
     private Token constTk;
     private Btype btype;

@@ -4,7 +4,7 @@ import Token.Token;
 
 import java.util.StringJoiner;
 
-public class AddExp implements Node {
+public class AddExp extends Node {
     //AddExp → MulExp
     //AddExp → MulExp ('+' | '−') AddExp
 
