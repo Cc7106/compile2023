@@ -33,4 +33,7 @@ public class MainFuncDef extends Node {
         return output.toString();
     }
 
+    public Block getBlock() {
+        return block;
+    }
 }

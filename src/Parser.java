@@ -1,9 +1,13 @@
+import Error.Error;
 import GrammarTypes.*;
 import GrammarTypes.Number;
+import SymbolTable.*;
 import Token.Token;
 import Token.TokenType;
+import Error.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Objects;
 
 public class Parser {
@@ -11,12 +15,16 @@ public class Parser {
     private Token curToken;
     private int curPos = 0;
     private CompUnit compUnit;
+    private SymbolTable symbolTable;
+    private ErrorHandler errorHandler;
 
     public Parser(ArrayList<Token> allTokenList) {
         this.allTokenList = allTokenList;
         this.curToken = allTokenList.get(0);
+        this.symbolTable = new SymbolTable();
+        this.errorHandler = new ErrorHandler(symbolTable);
         compUnit = parseCompUnit();
-    }
+        }
 
     private void nextToken() {
         curPos++;
@@ -88,6 +96,8 @@ public class Parser {
         Token intTk, mainTk, LParent, RParent;
         Block block;
 
+        symbolTable.addNewBlock();
+        symbolTable.setCurFuncType(1);
         if (curToken.getTokenType().equals(TokenType.INTTK)) {
             intTk = setTokenAndNext();
         } else {
@@ -107,8 +117,11 @@ public class Parser {
             if (curToken.getTokenType().equals(TokenType.RPARENT)) {
                 RParent = setTokenAndNext();
             } else {
-                error("mainFuncDef miss )");
-                return null;
+                //error("mainFuncDef miss )");
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.j);
+                RParent = new Token(")",errorLine);
             }
         } else {
             error("mainFuncDef miss (");
@@ -117,11 +130,16 @@ public class Parser {
 
         if (curToken.getTokenType().equals(TokenType.LBRACE)) {
             block = parseBlock();
+            symbolTable.setCurFuncType(0);
         } else {
             error("mainFuncDef miss block");
             return null;
         }
-        return new MainFuncDef(intTk, mainTk, LParent, RParent, block);
+
+        MainFuncDef mainFuncDef = new MainFuncDef(intTk, mainTk, LParent, RParent, block);
+        int RBraceLine = allTokenList.get(curPos - 1).getLineNum();
+        errorHandler.checkErrorG(mainFuncDef, RBraceLine);
+        return mainFuncDef;
     }
 
     private Boolean isMainFunc() {
@@ -157,6 +175,7 @@ public class Parser {
         Btype btype;
         ArrayList<ConstDef> constDefList = new ArrayList<>();
         ArrayList<Token> commasList = new ArrayList<>();
+
         if (curToken.getTokenType().equals(TokenType.CONSTTK)) {
             constTk = setTokenAndNext();
             if (curToken.getTokenType().equals(TokenType.INTTK)) {
@@ -172,8 +191,15 @@ public class Parser {
                     semicn = setTokenAndNext();
                     return new ConstDecl(constTk,btype,constDefList,commasList,semicn);
                 } else {
+                    /*
                     error("constDecl miss ;");
                     return null;
+                     */
+                    //进入错误处理，但是假装没出错返回
+                    int errorLine = allTokenList.get(curPos-1).getLineNum();
+                    errorHandler.addError(errorLine,ErrorType.i);
+                    return new ConstDecl(constTk,btype,constDefList,commasList,new Token(";",errorLine));
+
                 }
             } else {
                 error("constDecl miss int");
@@ -204,8 +230,14 @@ public class Parser {
                 semicn = setTokenAndNext();
                 return new VarDecl(btype,varDefList,commasList,semicn);
             } else {
+                /*
                 error("varDecl miss ;");
                 return null;
+                 */
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.i);
+                return new VarDecl(btype,varDefList,commasList,new Token(";",errorLine));
             }
         } else {
            error("varDecl");
@@ -214,6 +246,7 @@ public class Parser {
     }
 
     private VarDef parseVarDef() {
+
         // VarDef → Ident { '[' ConstExp ']' }
         // VarDef → Ident { '[' ConstExp ']' } '=' InitVal
 
@@ -231,8 +264,11 @@ public class Parser {
                 if (curToken.getTokenType().equals(TokenType.RBRACK)) {
                     RBrack1 = setTokenAndNext();  //']'
                 } else {
-                    error("varDef miss ]");
-                    return null;
+                    //error("varDef miss ]");
+                    //进入错误处理，但是假装没出错返回
+                    int errorLine = allTokenList.get(curPos-1).getLineNum();
+                    errorHandler.addError(errorLine,ErrorType.k);
+                    RBrack1 = new Token("]", errorLine);
                 }
             }
 
@@ -243,16 +279,26 @@ public class Parser {
                 if (curToken.getTokenType().equals(TokenType.RBRACK)) {
                     RBrack2 = setTokenAndNext(); //']'
                 } else {
-                    error("varDef miss ]");
-                    return null;
+                    //error("varDef miss ]");
+                    //进入错误处理，但是假装没出错返回
+                    int errorLine = allTokenList.get(curPos-1).getLineNum();
+                    errorHandler.addError(errorLine,ErrorType.k);
+                    RBrack2 = new Token("]", errorLine);
                 }
             }
-            
+
             if (curToken.getTokenType().equals(TokenType.ASSIGN)) {
                 assign = setTokenAndNext();
                 initVal = parseInitVal();
             }
-            return new VarDef(ident,LBrack1,constExp1,RBrack1,LBrack2,constExp2,RBrack2,assign,initVal);
+            VarDef varDef = new VarDef(ident,LBrack1,constExp1,RBrack1,LBrack2,constExp2,RBrack2,assign,initVal);
+
+            if (errorHandler.checkErrorB(ident.getToken(), ident.getLineNum())) {
+                //没出现重定义才加入符号表
+                VarSymbol varSymbol = new VarSymbol(varDef);
+                symbolTable.addVar(varSymbol);
+            }
+            return varDef;
         } else {
             error("varDef");
             return null;
@@ -288,7 +334,6 @@ public class Parser {
         }
     }
 
-
     private ConstDef parseConstDef() {
         // ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal
         Token ident, LBrack1 = null, RBrack1 = null, LBrack2 = null, RBrack2 = null, assign;
@@ -305,8 +350,11 @@ public class Parser {
                 if (curToken.getTokenType().equals(TokenType.RBRACK)) {
                     RBrack1 = setTokenAndNext(); //']'
                 } else {
-                    error("constDef miss ]");
-                    return null;
+                    //error("constDef miss ]");
+                    //进入错误处理，但是假装没出错返回
+                    int errorLine = allTokenList.get(curPos-1).getLineNum();
+                    errorHandler.addError(errorLine, ErrorType.k);
+                    RBrack1 = new Token("]", errorLine);
                 }
             }
 
@@ -317,8 +365,11 @@ public class Parser {
                 if (curToken.getTokenType().equals(TokenType.RBRACK)) {
                     RBrack2 = setTokenAndNext();  // ']'
                 } else {
-                    error("constDef miss ]");
-                    return null;
+                    //error("constDef miss ]");
+                    //进入错误处理，但是假装没出错返回
+                    int errorLine = allTokenList.get(curPos-1).getLineNum();
+                    errorHandler.addError(errorLine, ErrorType.k);
+                    RBrack2 = new Token("]", errorLine);
                 }
             }
 
@@ -329,8 +380,14 @@ public class Parser {
                 error("constDef miss =");
                 return null;
             }
-            return new ConstDef(ident, LBrack1, constExp1, RBrack1, LBrack2, constExp2, RBrack2, assign, constInitVal);
 
+            ConstDef constDef = new ConstDef(ident, LBrack1, constExp1, RBrack1, LBrack2, constExp2, RBrack2, assign, constInitVal);
+            if (errorHandler.checkErrorB(ident.getToken(), ident.getLineNum())) {
+                //声明时没出现错误 -重定义
+                VarSymbol varSymbol = new VarSymbol(constDef);
+                symbolTable.addVar(varSymbol);
+            }
+            return constDef;
 
         } else {
             error("constDef");
@@ -381,19 +438,29 @@ public class Parser {
         Token ident, LParent, RParent;
         FuncFParams funcFParams = null;
         Block block;
+        boolean gotError = false; //函数声明是否出现错误 (重定义)
+        int startLine, endLine;
 
-        if (curToken.getTokenType().equals(TokenType.VOIDTK) || curToken.getTokenType().equals(TokenType.INTTK)) {
-            funcType = parseFuncType();
+        funcType = parseFuncType();
+        ident = setTokenAndNext();
+        startLine = ident.getLineNum();
+
+        if (!errorHandler.checkErrorB(ident.getToken(), ident.getLineNum())) {
+            //先创建一个varsymbol加入map
+            gotError = true;
         } else {
-            error("FuncDef");
-            return null;
+            //先加入符号表
+            VarSymbol varSymbol = new VarSymbol(funcType, ident);
+            symbolTable.addVar(varSymbol);
         }
 
-        if (curToken.getTokenType().equals(TokenType.IDENFR)) {
-            ident = setTokenAndNext();
+        symbolTable.addNewBlock(); //进入新的一个作用域
+        if (funcType.getFuncType().getTokenType().equals(TokenType.VOIDTK) && gotError) {
+            symbolTable.setCurFuncType(-1);
+        } else if (funcType.getFuncType().getTokenType().equals(TokenType.VOIDTK)){
+            symbolTable.setCurFuncType(0);
         } else {
-            error("FuncDef");
-            return null;
+            symbolTable.setCurFuncType(1);
         }
 
         if (curToken.getTokenType().equals(TokenType.LPARENT)) {
@@ -406,22 +473,47 @@ public class Parser {
             if (curToken.getTokenType().equals(TokenType.RPARENT)) {
                 RParent = setTokenAndNext(); //')'
             } else {
+                /*
                 error("funcDef miss )");
                 return null;
+                 */
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.j);
+                RParent = new Token(")",errorLine);
+
             }
         } else {
             error("funcDef miss (");
             return null;
         }
 
+
+        //加入函数表，函数声明成功
+        FuncDef funcDef = new FuncDef(funcType,ident,LParent,funcFParams,RParent);
+        if (!gotError) {
+            Symbol funcSymbol = new FuncSymbol(funcDef);
+            symbolTable.addFunction(funcSymbol);
+        }
+
+
         if (curToken.getTokenType().equals(TokenType.LBRACE)) {
             block = parseBlock();
+            symbolTable.setCurFuncType(0);
+            //block里面退出
         } else {
             error("funcDef miss block");
             return null;
         }
-
-        return new FuncDef(funcType,ident,LParent,funcFParams,RParent,block);
+        funcDef.addBlock(block);
+        endLine = allTokenList.get(curPos - 1).getLineNum();
+         if (!gotError) {
+            int RBraceLine = allTokenList.get(curPos-1).getLineNum();
+            errorHandler.checkErrorG(funcDef, RBraceLine);
+        } else {
+            errorHandler.dltErrorsInFunc(startLine+1, endLine);  //函数声明失败 block内错误无视
+        }
+        return funcDef;
     }
 
     private FuncFParams parseFuncFParams() {
@@ -442,21 +534,23 @@ public class Parser {
             return null;
         }
     }
-
     private FuncFParam parseFuncFParam() {
-
         // FuncFParam → BType Ident
         // FuncFParam → BType Ident '[' ']'
         // FuncFParam → BType Ident '[' ']''[' ConstExp ']'
         Btype btype;
         Token ident, LBrack1 = null, RBrack1 = null, LBrack2 = null, RBrack2 = null;
         ConstExp constExp = null;
+        boolean gotError = false; //声明时是否出现错误 重定义
 
         if (curToken.getTokenType().equals(TokenType.INTTK)) {
             btype = parseBtype();
 
             if (curToken.getTokenType().equals(TokenType.IDENFR)) {
                 ident = setTokenAndNext();
+                if (!errorHandler.checkErrorB(ident.getToken(), ident.getLineNum())) {
+                    gotError = true;
+                }
 
                 //一维数组
                 if (curToken.getTokenType().equals(TokenType.LBRACK)) {
@@ -464,8 +558,15 @@ public class Parser {
                     if (curToken.getTokenType().equals(TokenType.RBRACK)) {
                         RBrack1 = setTokenAndNext();
                     } else {
+                        /*
                         error("funcFParam miss ]");
                         return null;
+                         */
+                        //进入错误处理，但是假装没出错返回
+                        int errorLine = allTokenList.get(curPos-1).getLineNum();
+                        errorHandler.addError(errorLine, ErrorType.k);
+                        RBrack1 = new Token("]", errorLine);
+
                     }
                 }
 
@@ -476,15 +577,28 @@ public class Parser {
                     if (curToken.getTokenType().equals(TokenType.RBRACK)) {
                         RBrack2 = setTokenAndNext();
                     } else {
+                        /*
                         error("funcFParam miss ]");
                         return null;
+                         */
+                        //进入错误处理，但是假装没出错返回
+                        int errorLine = allTokenList.get(curPos-1).getLineNum();
+                        errorHandler.addError(errorLine, ErrorType.k);
+                        RBrack2 = new Token("]", errorLine);
+
                     }
                 }
             } else {
                 error("funcFParam");
                 return null;
             }
-            return new FuncFParam(btype,ident, LBrack1, RBrack1, LBrack2, constExp, RBrack2);
+            FuncFParam funcFParam = new FuncFParam(btype,ident, LBrack1, RBrack1, LBrack2, constExp, RBrack2);
+            if (!gotError) {
+                //声明时没出现错误 -重定义
+                VarSymbol varSymbol = new VarSymbol(funcFParam,btype);
+                symbolTable.addVar(varSymbol);
+            }
+            return funcFParam;
         } else {
             error("funcFParam");
             return null;
@@ -509,12 +623,14 @@ public class Parser {
         Token LBrace, RBrace;
         ArrayList<BlockItem> blockItemsList = new ArrayList<>();
         if (curToken.getTokenType().equals(TokenType.LBRACE)) {
+
             LBrace = setTokenAndNext();  //'{'
 
             while (!curToken.getTokenType().equals(TokenType.RBRACE)) {
                 blockItemsList.add(parseBlockItem());
             }
             RBrace = setTokenAndNext();  //'}'
+            symbolTable.quitBlock();
             return new Block(LBrace, blockItemsList, RBrace);
         }
         error("block");
@@ -563,9 +679,17 @@ public class Parser {
             if (curToken.getTokenType().equals(TokenType.SEMICN)) {
                 semicn = setTokenAndNext();
             } else {
+                /*
                 error("break/continue stmt miss ;");
                 return null;
+                 */
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.i);
+                semicn = new Token(";", errorLine);
+
             }
+            errorHandler.checkErrorM(token.getLineNum());
             return new Stmt(token, semicn);
 
         } else if (curToken.getTokenType().equals(TokenType.RETURNTK)) {
@@ -579,9 +703,16 @@ public class Parser {
             if (curToken.getTokenType().equals(TokenType.SEMICN)) {
                 semicn = setTokenAndNext();
             } else {
-                error("break stmt miss ;");
+                /*
+                error("return stmt miss ;");
                 return null;
+                 */
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.i);
+                semicn = new Token(";", errorLine);
             }
+            errorHandler.checkErrorF(exp, returnTk.getLineNum());
             return new Stmt(returnTk, exp, semicn);
 
         } else if (curToken.getTokenType().equals(TokenType.PRINTFTK)) {
@@ -590,23 +721,25 @@ public class Parser {
 
         } else if (curToken.getTokenType().equals(TokenType.LBRACE)) {
             // Block
+            symbolTable.addNewBlock();
             Block block = parseBlock();
             return new Stmt(block);
         }
-
         /*
          LVal '=' Exp ';'
          LVal '=' 'getint' '(' ')' ';'
          [Exp] ';'
         */
-
         if (doLValinStmt()) { //往后扫有出现‘=’
             // LVal '=' Exp ';'
             // LVal '=' 'getint' '(' ')' ';'
             LVal lVal = parseLVal();
+            int lvalLine = allTokenList.get(curPos-1).getLineNum();
+            errorHandler.checkErrorC(lVal.getIdent().getToken(), lvalLine, 0 );
             Token assign;
             if (curToken.getTokenType().equals(TokenType.ASSIGN)) {
                 assign = setTokenAndNext();
+                errorHandler.checkErrorH(lVal, lvalLine);
             } else {
                 error("lvalStmt miss =");
                 return null;
@@ -615,15 +748,32 @@ public class Parser {
             if (curToken.getTokenType().equals(TokenType.GETINTTK)) {
                 Token getintTk, LParent, RParent, semicn;
                 getintTk = setTokenAndNext();
-                if (curToken.getTokenType().equals(TokenType.LPARENT) &&
-                        Objects.requireNonNull(preRead()).getTokenType().equals(TokenType.RPARENT) &&
-                        Objects.requireNonNull(prePreRead()).getTokenType().equals(TokenType.SEMICN)) {
+                if (curToken.getTokenType().equals(TokenType.LPARENT)) {
                     LParent = setTokenAndNext();
-                    RParent = setTokenAndNext();
-                    semicn = setTokenAndNext();
-                    return new Stmt(lVal, assign, getintTk,LParent, RParent, semicn);
+                    if (curToken.getTokenType().equals(TokenType.RPARENT)) {
+                        RParent = setTokenAndNext();
+                    } else {
+                        //error("getintStmt miss )");
+                        //进入错误处理，但是假装没出错返回
+                        int errorLine = allTokenList.get(curPos-1).getLineNum();
+                        errorHandler.addError(errorLine, ErrorType.j);
+                        RParent = new Token(")",errorLine);
+                    }
+                    if (curToken.getTokenType().equals(TokenType.SEMICN)) {
+                        semicn = setTokenAndNext();
+                        return new Stmt(lVal, assign, getintTk,LParent, RParent, semicn);
+                    } else {
+                        /*
+                        error("getintStmt miss ;");
+                        return null;
+                        */
+                        //进入错误处理，但是假装没出错返回
+                        int errorLine = allTokenList.get(curPos-1).getLineNum();
+                        errorHandler.addError(errorLine, ErrorType.i);
+                        return new Stmt(lVal,assign,getintTk,LParent,RParent, new Token(";",errorLine));
+                    }
                 } else {
-                    error("getintStmt miss sth");
+                    error("getintStmt miss (");
                     return null;
                 }
             } else {
@@ -632,8 +782,12 @@ public class Parser {
                     Token semicn = setTokenAndNext();
                     return new Stmt(lVal, assign, exp, semicn);
                 } else {
-                    error("lvalExp stmt miss ;");
-                    return null;
+                    //error("lvalExp stmt miss ;");
+                    //return null;
+                    //进入错误处理，但是假装没出错返回
+                    int errorLine = allTokenList.get(curPos-1).getLineNum();
+                    errorHandler.addError(errorLine, ErrorType.i);
+                    return new Stmt(lVal,assign, exp, new Token(";",errorLine));
                 }
             }
 
@@ -647,8 +801,15 @@ public class Parser {
             if (curToken.getTokenType().equals(TokenType.SEMICN)) {
                 semicn = setTokenAndNext();
             } else {
+                /*
                 error("ExpStmt miss ;");
                 return null;
+                 */
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.i);
+                return new Stmt(exp, new Token(";",errorLine));
+
             }
             return new Stmt(exp,semicn);
         }
@@ -668,8 +829,15 @@ public class Parser {
                 RParent = setTokenAndNext();
                 stmt1 = parseStmt();
             } else {
+                /*
                 error("ifStmt miss )");
                 return null;
+                 */
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.j);
+                RParent = new Token(")",errorLine);
+                stmt1 = parseStmt();
             }
         } else {
             error("ifStmt miss (");
@@ -728,7 +896,9 @@ public class Parser {
                 error("forStmt miss )");
                 return null;
             }
+            symbolTable.setInLoop();
             stmt = parseStmt();
+            symbolTable.setOutLoop();
         } else {
             error("forStmt miss (");
             return null;
@@ -742,6 +912,7 @@ public class Parser {
         ArrayList<Token> commasList = new ArrayList<>();
         ArrayList<Exp> expList = new ArrayList<>();
 
+        int printfLine = curToken.getLineNum();
         printfTk = setTokenAndNext();
         if (curToken.getTokenType().equals(TokenType.LPARENT)) {
             LParent = setTokenAndNext();
@@ -752,6 +923,7 @@ public class Parser {
 
         if (curToken.getTokenType().equals(TokenType.STRCON)) {
             strcon = setTokenAndNext();
+            errorHandler.checkErrorA(strcon);
         } else {
             error("printStmt miss strcon");
             return null;
@@ -765,17 +937,31 @@ public class Parser {
         if (curToken.getTokenType().equals(TokenType.RPARENT)) {
             RParent = setTokenAndNext();
         } else {
+            /*
             error("printStmt miss )");
             return null;
+             */
+            //进入错误处理，但是假装没出错返回
+            int errorLine = allTokenList.get(curPos-1).getLineNum();
+            errorHandler.addError(errorLine, ErrorType.j);
+            RParent = new Token(")",errorLine);
         }
 
         if (curToken.getTokenType().equals(TokenType.SEMICN)) {
             semicn = setTokenAndNext();
         } else {
+            /*
             error("printStmt miss ;");
             return null;
+             */
+            //进入错误处理，但是假装没出错返回
+            int errorLine = allTokenList.get(curPos-1).getLineNum();
+            errorHandler.addError(errorLine, ErrorType.i);
+            return new Stmt(printfTk,LParent,strcon,commasList,expList,RParent,new Token(";",errorLine));
         }
-        return new Stmt(printfTk,LParent,strcon,commasList,expList,RParent,semicn);
+        Stmt printStmt = new Stmt(printfTk,LParent,strcon,commasList,expList,RParent,semicn);
+        errorHandler.checkErrorL(printStmt, printfLine);
+        return printStmt;
     }
 
     private Cond parseCond() {
@@ -848,6 +1034,7 @@ public class Parser {
         Token assign;
         Exp exp;
         lVal = parseLVal();
+        int lValLine = allTokenList.get(curPos-1).getLineNum();
         if (curToken.getTokenType().equals(TokenType.ASSIGN)) {
             assign = setTokenAndNext();
         } else {
@@ -855,6 +1042,7 @@ public class Parser {
             return null;
         }
         exp = parseExp();
+        errorHandler.checkErrorH(lVal, lValLine);
         return new ForStmt(lVal,assign,exp);
     }
 
@@ -899,12 +1087,15 @@ public class Parser {
                 Token RParent = setTokenAndNext();
                 return new PrimaryExp(LParent,exp,RParent);
             } else {
-                error("PrimaryExp less )");
-                return null;
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.j);
+                return new PrimaryExp(LParent, exp, new Token(")'", errorLine));
             }
         } else if (curToken.getTokenType().equals(TokenType.IDENFR)) {
             //LVal
             LVal lVal = parseLVal();
+            int lValLine = allTokenList.get(curPos - 1).getLineNum();
+            errorHandler.checkErrorC(lVal.getIdent().getToken(), lValLine, 0);
             return new PrimaryExp(lVal);
         } else if (curToken.getTokenType().equals(TokenType.INTCON)) {
             //Number
@@ -938,15 +1129,29 @@ public class Parser {
                             RBrack2 = setTokenAndNext(); //']'
                             return new LVal(ident, LBrack1, exp1, RBrack1, LBrack2, exp2, RBrack2);
                         } else {
+                            /*
                             error("LVal less ]");
                             return null;
+                             */
+                            //进入错误处理，但是假装没出错返回
+                            int errorLine = allTokenList.get(curPos-1).getLineNum();
+                            errorHandler.addError(errorLine, ErrorType.k);
+                            RBrack2 = new Token("]", errorLine);
+                            return new LVal(ident, LBrack1, exp1, RBrack1, LBrack2, exp2, RBrack2);
                         }
                     }
 
                     return new LVal(ident,LBrack1,exp1,RBrack1);
                 } else {
+                    /*
                     error("LVal less ]");
                     return null;
+                     */
+                    //进入错误处理，但是假装没出错返回
+                    int errorLine = allTokenList.get(curPos-1).getLineNum();
+                    errorHandler.addError(errorLine, ErrorType.k);
+                    RBrack1 = new Token("]", errorLine);
+                    return new LVal(ident,LBrack1,exp1,RBrack1);
                 }
             }
             return new LVal(ident);
@@ -1004,17 +1209,32 @@ public class Parser {
             Token ident, LParent, RParent;
             FuncRParams funcRParams = null;
             ident = setTokenAndNext();
+            errorHandler.checkErrorC(ident.getToken(), ident.getLineNum(), 1); //检查函数是否声明
             LParent = setTokenAndNext();  //'('
-            if (!curToken.getTokenType().equals(TokenType.RPARENT)) {
+
+
+            if (!curToken.getTokenType().equals(TokenType.RPARENT) && !curToken.getTokenType().equals(TokenType.SEMICN)) {
+                //不是')' 1.是参数 2. 无参，且缺')' 所以是';'
                 funcRParams = parseFuncRParams();
             }
+
             if (curToken.getTokenType().equals(TokenType.RPARENT)) {
                 RParent = setTokenAndNext(); //')'
+                if(errorHandler.checkErrorD(ident.getToken(), funcRParams, ident.getLineNum())) {
+                    errorHandler.checkErrorE(ident.getToken(), funcRParams, ident.getLineNum());
+                }
                 return new UnaryExp(ident, LParent, funcRParams, RParent);
             } else {
+                /*
                 error("UnaryExp less )");
                 return null;
+                 */
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.j);
+                return new UnaryExp(ident, LParent, funcRParams, new Token(")",errorLine));
             }
+
         } else if (curToken.getTokenType().equals(TokenType.PLUS) || curToken.getTokenType().equals(TokenType.MINU)
                 || curToken.getTokenType().equals(TokenType.NOT)) {
             //UnaryOp UnaryExp
@@ -1078,5 +1298,9 @@ public class Parser {
 
     public CompUnit getCompUnit() {
         return compUnit;
+    }
+
+    public ArrayList<Error> getErrorsList() {
+        return errorHandler.getErrorsList();
     }
 }

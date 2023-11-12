@@ -40,4 +40,13 @@ public class MulExp extends Node {
     }
 
      */
+
+    public Token getRParamType() {
+        return unaryExp.getRParamType();
+    }
+
+    @Override
+    public int getDimension() {
+        return unaryExp.getDimension();
+    }
 }

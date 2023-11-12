@@ -42,4 +42,13 @@ public class AddExp extends Node {
     public String toString() {
         return expString(mulExp,op,addExp,"AddExp");
     }
+
+    public Token getRParamType() {
+        return mulExp.getRParamType();
+    }
+
+    @Override
+    public int getDimension() {
+        return mulExp.getDimension();
+    }
 }

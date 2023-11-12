@@ -85,8 +85,46 @@ public class Node {
         return output.toString();
     }
 
-//    //public void addError(Error error) {
+//    public void addError(Error error) {
 //        errorsList.add(error);
 //    }
+
+    public ArrayList<Exp> getExpList() {
+        return null;
+    }
+
+    public FuncFParams getFuncFParams() {
+        return null;
+    }
+
+    public ArrayList<FuncFParam> getFuncFParamList() {
+        return null;
+    }
+
+    public Token getIdent() {
+        return null;
+    }
+
+    public Token getFuncType() {
+        return null;
+    }
+
+    public int getDimension() {
+        return 0;
+    }
+
+    public Token getBtype() {
+        return null;
+    }
+
+    public Block getBlock() {
+        return null;
+    }
+
+    public Token getRParamType() {
+        return null;
+    }
+
+
 
 }

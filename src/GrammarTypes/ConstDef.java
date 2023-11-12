@@ -57,4 +57,35 @@ public class ConstDef extends Node {
     }
 
      */
+
+    @Override
+    public Token getIdent() {
+        return ident;
+    }
+
+
+
+    public ConstExp getConstExp1() {
+        return ConstExp1;
+    }
+
+
+    public ConstExp getConstExp2() {
+        return ConstExp2;
+    }
+
+    public ConstInitVal getConstInitVal() {
+        return constInitVal;
+    }
+
+    @Override
+    public int getDimension() {
+        if (LBrack1 == null) {
+            return 0;
+        } else if (LBrack2 == null) {
+            return 1;
+        } else {
+            return 2;
+        }
+    }
 }

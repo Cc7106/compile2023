@@ -145,6 +145,14 @@ public class Stmt extends Node {
         this.semicn1 = semicn1;
     }
 
+    public String getStrcon() {
+        return strcon.getToken();
+    }
+
+    public ArrayList<Exp> getExpList() {
+        return expList;
+    }
+
     public String toString() {
         StringJoiner output = new StringJoiner("\n");
         if (ifTk != null) {
@@ -238,5 +246,75 @@ public class Stmt extends Node {
 
     }
 
+    public LVal getlVal() {
+        return lVal;
+    }
 
+    public Token getEqual() {
+        return equal;
+    }
+
+    public Exp getExp() {
+        return exp;
+    }
+
+    public Block getBlock() {
+        return block;
+    }
+
+    public Token getIfTk() {
+        return ifTk;
+    }
+
+    public Token getElseTk() {
+        return elseTk;
+    }
+
+    public Token getForTk() {
+        return forTk;
+    }
+
+    public Token getBreakTk() {
+        return breakTk;
+    }
+
+    public Token getContinueTk() {
+        return continueTk;
+    }
+
+    public Token getReturnTk() {
+        return returnTk;
+    }
+
+    public Token getGetIntTk() {
+        return getIntTk;
+    }
+
+    public Token getPrintfTk() {
+        return printfTk;
+    }
+
+    public Stmt getStmt1() {
+        return stmt1;
+    }
+
+    public Stmt getStmt2() {
+        return stmt2;
+    }
+
+    public ForStmt getForStmt1() {
+        return forStmt1;
+    }
+
+    public ForStmt getForStmt2() {
+        return forStmt2;
+    }
+
+    public Cond getCond() {
+        return cond;
+    }
+
+    public ArrayList<Token> getCommasList() {
+        return commasList;
+    }
 }

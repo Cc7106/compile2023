@@ -19,4 +19,9 @@ public class FuncType extends Node {
         output.add("<FuncType>");
         return output.toString();
     }
+
+    public Token getFuncType() {
+        return funcType;
+    }
+
 }

@@ -23,6 +23,12 @@ public class FuncRParams extends Node {
 
     }
 
+    public ArrayList<Exp> getExpsList() {
+        return expsList;
+    }
+
+
+
     /*
     public String toString() {
         StringJoiner output = new StringJoiner("\n");

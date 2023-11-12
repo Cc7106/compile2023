@@ -29,6 +29,10 @@ public class FuncFParams extends Node {
 
     }
 
+    public ArrayList<FuncFParam> getFuncFParamList() {
+        return funcFParamList;
+    }
+
     /*
     public String toString() {
         StringJoiner output = new StringJoiner("\n");

@@ -27,4 +27,8 @@ public class Block extends Node {
         output.add("<Block>");
         return output.toString();
     }
+
+    public ArrayList<BlockItem> getBlockItemsList() {
+        return blockItemsList;
+    }
 }

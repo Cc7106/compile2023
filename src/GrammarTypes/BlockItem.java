@@ -29,4 +29,12 @@ public class BlockItem extends Node {
 
         return output.toString();
     }
+
+    public Decl getDecl() {
+        return decl;
+    }
+
+    public Stmt getStmt() {
+        return stmt;
+    }
 }

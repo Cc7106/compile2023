@@ -75,4 +75,23 @@ public class LVal extends Node {
     }
 
      */
+
+    @Override
+    public Token getIdent() {
+        return ident;
+    }
+
+    public Token getRParamType() {
+        return ident;
+    }
+
+    public int getDimension() {
+        if (LBrack1 == null) {
+            return 0;
+        } else if (LBrack2 == null) {
+            return 1;
+        } else {
+            return 2;
+        }
+    }
 }

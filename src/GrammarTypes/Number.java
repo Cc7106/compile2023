@@ -18,4 +18,8 @@ public class Number extends Node {
         output.add("<Number>");
         return output.toString();
     }
+
+    public Token getRParamType() {
+        return intConst;
+    }
 }

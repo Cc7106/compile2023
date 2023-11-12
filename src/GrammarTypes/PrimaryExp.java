@@ -1,6 +1,6 @@
 package GrammarTypes;
 
-import Token.Token;
+import Token.*;
 
 import java.util.StringJoiner;
 
@@ -58,5 +58,25 @@ public class PrimaryExp extends Node {
         return output.toString();
     }
 
+    public Token getRParamType() {
+        if (lParent != null) {
+            return exp.getRParamType();
+        } else if (LVal != null) {
+            return LVal.getRParamType();
+        } else {
+            return number.getRParamType();
+        }
+    }
 
+    @Override
+    public int getDimension() {
+        if (lParent != null) {
+            return exp.getDimension();
+        } else if (LVal != null) {
+            return LVal.getDimension();
+        } else {
+            //常数
+            return 0;
+        }
+    }
 }

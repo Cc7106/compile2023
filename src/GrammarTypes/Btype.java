@@ -16,4 +16,8 @@ public class Btype extends Node {
         output.add(intTk.toString());
         return output.toString();
     }
+
+    public Token getBtype() {
+        return intTk;
+    }
 }

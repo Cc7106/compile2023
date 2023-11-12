@@ -33,6 +33,19 @@ public class FuncDef extends Node {
         this.block = block;
     }
 
+    public FuncDef(FuncType funcType, Token ident, Token lParent, FuncFParams funcFParams, Token rParent) {
+        //有形参
+        this.funcType = funcType;
+        this.ident = ident;
+        this.LParent = lParent;
+        this.funcFParams = funcFParams;
+        this.RParent = rParent;
+        this.block = null;
+    }
+
+    public void addBlock(Block block) {
+        this.block = block;
+    }
     public String toString() {
         StringJoiner output = new StringJoiner("\n");
         output.add(funcType.toString());
@@ -46,6 +59,22 @@ public class FuncDef extends Node {
 
         output.add("<FuncDef>");
         return output.toString();
+    }
+
+    public FuncFParams getFuncFParams() {
+        return funcFParams;
+    }
+
+    public Token getIdent() {
+        return ident;
+    }
+
+    public Token getFuncType() {
+        return funcType.getFuncType();
+    }
+
+    public Block getBlock() {
+        return block;
     }
 
 }

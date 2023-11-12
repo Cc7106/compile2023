@@ -120,4 +120,31 @@ public class VarDef extends Node {
     }
 
      */
+
+    @Override
+    public Token getIdent() {
+        return ident;
+    }
+
+    public ConstExp getConstExp1() {
+        return constExp1;
+    }
+
+    public ConstExp getConstExp2() {
+        return constExp2;
+    }
+
+    public InitVal getInitVal() {
+        return initVal;
+    }
+
+    public int getDimension() {
+        if (LBrack1 == null) {
+            return 0;
+        } else if (LBrack2 == null) {
+            return 1;
+        } else {
+            return 2;
+        }
+    }
 }

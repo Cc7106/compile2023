@@ -65,4 +65,26 @@ public class UnaryExp extends Node {
         output.add("<UnaryExp>");
         return output.toString();
     }
+
+    public Token getRParamType() {
+        if (primaryExp != null) {
+            return primaryExp.getRParamType();
+        } else if (ident != null) {
+            return ident;
+        } else {
+            return unaryExp.getRParamType();
+        }
+    }
+
+    @Override
+    public int getDimension() {
+        if (primaryExp != null) {
+            return primaryExp.getDimension();
+        } else if (ident != null) {
+            //调用函数
+            return -1;
+        } else {
+            return unaryExp.getDimension();
+        }
+    }
 }
