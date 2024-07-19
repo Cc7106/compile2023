@@ -39,4 +39,16 @@ public class EqExp extends Node {
     }
 
      */
+
+    public RelExp getRelExp() {
+        return relExp;
+    }
+
+    public Token getRelation() {
+        return relation;
+    }
+
+    public EqExp getEqExp() {
+        return eqExp;
+    }
 }

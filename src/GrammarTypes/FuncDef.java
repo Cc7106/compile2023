@@ -69,8 +69,12 @@ public class FuncDef extends Node {
         return ident;
     }
 
-    public Token getFuncType() {
-        return funcType.getFuncType();
+    public FuncType getFuncType()  {
+        return funcType;
+    }
+
+    public Token getFuncTypeToken() {
+        return funcType.getFuncTypeToken();
     }
 
     public Block getBlock() {

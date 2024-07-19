@@ -18,6 +18,14 @@ public class Decl extends Node {
         this.varDecl = varDecl;
     }
 
+    public ConstDecl getConstDecl() {
+        return constDecl;
+    }
+
+    public VarDecl getVarDecl() {
+        return varDecl;
+    }
+
     public String toString() {
         StringJoiner output = new StringJoiner("\n");
         if (constDecl != null) {

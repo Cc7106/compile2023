@@ -56,12 +56,15 @@ public class Node {
 
     public String expString(Node exp1, Token midToken, Node exp2, String expType) {
         StringJoiner output = new StringJoiner("\n");
-        output.add(exp1.toString());
-        output.add("<" + expType + ">");
+
         if (midToken != null) {
-            output.add(midToken.toString());
             output.add(exp2.toString());
+            output.add(midToken.toString());
+            output.add(exp1.toString());
+        } else {
+            output.add(exp1.toString());
         }
+        output.add("<" + expType + ">");
         return output.toString();
     }
 
@@ -105,7 +108,7 @@ public class Node {
         return null;
     }
 
-    public Token getFuncType() {
+    public Token getFuncTypeToken() {
         return null;
     }
 

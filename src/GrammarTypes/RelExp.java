@@ -42,4 +42,16 @@ public class RelExp extends Node {
     }
 
      */
+
+    public AddExp getAddExp() {
+        return addExp;
+    }
+
+    public Token getRelation() {
+        return relation;
+    }
+
+    public RelExp getRelExp() {
+        return relExp;
+    }
 }

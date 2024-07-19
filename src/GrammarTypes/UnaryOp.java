@@ -20,4 +20,8 @@ public class UnaryOp extends Node {
         output.add("<UnaryOp>");
         return output.toString();
     }
+
+    public Token getOp() {
+        return op;
+    }
 }

@@ -41,4 +41,12 @@ public class LOrExp extends Node {
     }
 
      */
+
+    public LAndExp getlAndExp() {
+        return lAndExp;
+    }
+
+    public LOrExp getlOrExp() {
+        return lOrExp;
+    }
 }

@@ -51,4 +51,16 @@ public class AddExp extends Node {
     public int getDimension() {
         return mulExp.getDimension();
     }
+
+    public AddExp getAddExp() {
+        return addExp;
+    }
+
+    public MulExp getMulExp() {
+        return mulExp;
+    }
+
+    public Token getOp() {
+        return op;
+    }
 }

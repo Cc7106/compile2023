@@ -41,4 +41,12 @@ public class LAndExp extends Node {
     }
 
      */
+
+    public EqExp getEqExp() {
+        return eqExp;
+    }
+
+    public LAndExp getlAndExp() {
+        return lAndExp;
+    }
 }

@@ -81,4 +81,8 @@ public class FuncFParam extends Node {
     public Token getIdent() {
         return ident;
     }
+
+    public ConstExp getConstExp() {
+        return constExp;
+    }
 }

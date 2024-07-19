@@ -42,6 +42,14 @@ public class InitVal extends Node {
 
     }
 
+    public Exp getExp() {
+        return exp;
+    }
+
+    public ArrayList<InitVal> getInitValList() {
+        return initValList;
+    }
+
     /*
     public String toString() {
          StringJoiner output = new StringJoiner("\n");

@@ -17,7 +17,7 @@ public class FuncSymbol extends Symbol {
         // 函数名字，函数类型，函数参数数量，函数的各种参数
 
         super(node);
-        if (node.getFuncType().getTokenType().equals(TokenType.INTTK)) {
+        if (node.getFuncTypeToken().getTokenType().equals(TokenType.INTTK)) {
             this.funcType = 1;
         } else {
             this.funcType = 0;

@@ -28,6 +28,11 @@ public class VarDecl extends Node {
 
         return output.toString();
     }
+
+    public ArrayList<VarDef> getVarDef() {
+        return varDef;
+    }
+
     /*
     public String toString () {
         StringJoiner output = new StringJoiner("\n");

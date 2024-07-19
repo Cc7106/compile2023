@@ -87,4 +87,25 @@ public class UnaryExp extends Node {
             return unaryExp.getDimension();
         }
     }
+
+    public UnaryOp getUnaryOp() {
+        return unaryOp;
+    }
+
+    public UnaryExp getUnaryExp() {
+        return unaryExp;
+    }
+
+    public PrimaryExp getPrimaryExp() {
+        return primaryExp;
+    }
+
+    public FuncRParams getFuncRParams() {
+        return funcRParams;
+    }
+
+    @Override
+    public Token getIdent() {
+        return ident;
+    }
 }

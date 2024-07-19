@@ -26,7 +26,7 @@ public class VarSymbol extends Symbol {
         //func
         super(ident);
         varType = 2;
-        if (funcType.getFuncType().getTokenType().equals(TokenType.VOIDTK)) {
+        if (funcType.getFuncTypeToken().getTokenType().equals(TokenType.VOIDTK)) {
             dimension = -1;
         } else {
             dimension = 0;

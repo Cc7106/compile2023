@@ -41,6 +41,14 @@ public class ConstInitVal extends Node {
 
     }
 
+    public ConstExp getConstExp() {
+        return constExp;
+    }
+
+    public ArrayList<ConstInitVal> getConstInitValList() {
+        return constInitValList;
+    }
+
     /*
     public String toString() {
         StringJoiner output = new StringJoiner("\n");

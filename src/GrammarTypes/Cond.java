@@ -16,4 +16,8 @@ public class Cond extends Node {
         output.add("<Cond>");
         return output.toString();
     }
+
+    public LOrExp getlOrExp() {
+        return lOrExp;
+    }
 }

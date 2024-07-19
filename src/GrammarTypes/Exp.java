@@ -26,5 +26,9 @@ public class Exp extends Node {
         return addExp.getDimension();
     }
 
+    public AddExp getAddExp() {
+        return addExp;
+    }
+
 
 }

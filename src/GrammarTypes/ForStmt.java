@@ -27,6 +27,11 @@ public class ForStmt extends Node {
         return output.toString();
     }
 
+    public LVal getlVal() {
+        return lVal;
+    }
 
-
+    public Exp getExp() {
+        return exp;
+    }
 }

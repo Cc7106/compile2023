@@ -79,4 +79,24 @@ public class PrimaryExp extends Node {
             return 0;
         }
     }
+
+    public Token getlParent() {
+        return lParent;
+    }
+
+    public Exp getExp() {
+        return exp;
+    }
+
+    public Token getrParent() {
+        return rParent;
+    }
+
+    public GrammarTypes.LVal getLVal() {
+        return LVal;
+    }
+
+    public Number getNumber() {
+        return number;
+    }
 }

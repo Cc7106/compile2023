@@ -20,7 +20,7 @@ public class FuncType extends Node {
         return output.toString();
     }
 
-    public Token getFuncType() {
+    public Token getFuncTypeToken() {
         return funcType;
     }
 

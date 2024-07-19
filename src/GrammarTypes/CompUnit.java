@@ -15,6 +15,18 @@ public class CompUnit extends Node {
         this.mainFuncDef = mainFuncDef;
     }
 
+    public ArrayList<Decl> getDeclList() {
+        return declList;
+    }
+
+    public ArrayList<FuncDef> getFuncDefList() {
+        return funcDefList;
+    }
+
+    public MainFuncDef getMainFuncDef() {
+        return mainFuncDef;
+    }
+
     public String toString() {
         StringJoiner output = new StringJoiner("\n");
         if (!declList.isEmpty()) {

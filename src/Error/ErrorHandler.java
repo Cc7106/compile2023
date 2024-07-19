@@ -5,7 +5,6 @@ import SymbolTable.*;
 import Token.*;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -105,7 +104,7 @@ public class ErrorHandler {
     public void checkErrorG(Node node, int RBraceLine) {
         //funcDef(int) / mainFuncDef
         if (node instanceof FuncDef funcDef) {
-            if (funcDef.getFuncType().getTokenType().equals(TokenType.VOIDTK)) {
+            if (funcDef.getFuncTypeToken().getTokenType().equals(TokenType.VOIDTK)) {
                 return;
             }
         }

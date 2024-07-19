@@ -7,7 +7,6 @@ import Token.TokenType;
 import Error.*;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Objects;
 
 public class Parser {
@@ -455,9 +454,9 @@ public class Parser {
         }
 
         symbolTable.addNewBlock(); //进入新的一个作用域
-        if (funcType.getFuncType().getTokenType().equals(TokenType.VOIDTK) && gotError) {
+        if (funcType.getFuncTypeToken().getTokenType().equals(TokenType.VOIDTK) && gotError) {
             symbolTable.setCurFuncType(-1);
-        } else if (funcType.getFuncType().getTokenType().equals(TokenType.VOIDTK)){
+        } else if (funcType.getFuncTypeToken().getTokenType().equals(TokenType.VOIDTK)){
             symbolTable.setCurFuncType(0);
         } else {
             symbolTable.setCurFuncType(1);
@@ -975,12 +974,16 @@ public class Parser {
         Token or;
         LOrExp lOrExp;
         lAndExp = parseLAndExp();
-        if (curToken.getTokenType().equals(TokenType.OR)) {
+        lOrExp = new LOrExp(lAndExp);
+        while (curToken.getTokenType().equals(TokenType.OR)) {
             or = setTokenAndNext();
-            lOrExp = parseLOrExp();
-            return new LOrExp(lAndExp, or, lOrExp);
+//            lOrExp = parseLOrExp();
+//            return new LOrExp(lAndExp, or, lOrExp);
+            lAndExp = parseLAndExp();
+            lOrExp = new LOrExp(lAndExp, or, lOrExp);
         }
-        return new LOrExp(lAndExp);
+        //return new LOrExp(lAndExp);
+        return lOrExp;
     }
 
     private LAndExp parseLAndExp() {
@@ -989,12 +992,16 @@ public class Parser {
         Token and;
         LAndExp lAndExp;
         eqExp = parseEqExp();
-        if (curToken.getTokenType().equals(TokenType.AND)) {
+        lAndExp = new LAndExp(eqExp);
+        while (curToken.getTokenType().equals(TokenType.AND)) {
             and = setTokenAndNext();
-            lAndExp = parseLAndExp();
-            return new LAndExp(eqExp, and, lAndExp);
+//            lAndExp = parseLAndExp();
+//            return new LAndExp(eqExp, and, lAndExp);
+            eqExp = parseEqExp();
+            lAndExp = new LAndExp(eqExp, and, lAndExp);
         }
-        return new LAndExp(eqExp);
+//        return new LAndExp(eqExp);
+        return lAndExp;
     }
 
     private EqExp parseEqExp() {
@@ -1003,14 +1010,17 @@ public class Parser {
         Token token;
         EqExp eqExp;
         relExp = parseRelExp();
-        if (curToken.getTokenType().equals(TokenType.EQL) ||
+        eqExp = new EqExp(relExp);
+        while (curToken.getTokenType().equals(TokenType.EQL) ||
                 curToken.getTokenType().equals(TokenType.NEQ)) {
             token = setTokenAndNext();
-            eqExp = parseEqExp();
-            return new EqExp(relExp, token, eqExp);
+//            eqExp = parseEqExp();
+//            return new EqExp(relExp, token, eqExp);
+            relExp = parseRelExp();
+            eqExp = new EqExp(relExp, token, eqExp);
         }
-        return new EqExp(relExp);
-
+//        return new EqExp(relExp);
+        return eqExp;
     }
 
     private RelExp parseRelExp() {
@@ -1019,13 +1029,17 @@ public class Parser {
         Token token;
         RelExp relExp;
         addExp = parseAddExp();
-        if (curToken.getTokenType().equals(TokenType.GEQ) || curToken.getTokenType().equals(TokenType.GRE) ||
+        relExp = new RelExp(addExp);
+        while (curToken.getTokenType().equals(TokenType.GEQ) || curToken.getTokenType().equals(TokenType.GRE) ||
                 curToken.getTokenType().equals(TokenType.LEQ) || curToken.getTokenType().equals(TokenType.LSS) ) {
             token = setTokenAndNext();
-            relExp = parseRelExp();
-            return new RelExp(addExp, token, relExp);
+            addExp = parseAddExp();
+            relExp = new RelExp(addExp, token, relExp);
+           // relExp = parseRelExp();
+            //return new RelExp(addExp, token, relExp);
         }
-        return new RelExp(addExp);
+        //return new RelExp(addExp);
+        return relExp;
     }
 
     private ForStmt parseForStmt() {
@@ -1151,6 +1165,14 @@ public class Parser {
                     int errorLine = allTokenList.get(curPos-1).getLineNum();
                     errorHandler.addError(errorLine, ErrorType.k);
                     RBrack1 = new Token("]", errorLine);
+                    if (curToken.getTokenType().equals(TokenType.LBRACK)) {
+                        LBrack2 = setTokenAndNext(); //'['
+                        exp2 = parseExp();
+                        if (curToken.getTokenType().equals(TokenType.RBRACK)) {
+                            RBrack2 = setTokenAndNext(); //']'
+                            return new LVal(ident, LBrack1, exp1, RBrack1, LBrack2, exp2, RBrack2);
+                        }
+                    }
                     return new LVal(ident,LBrack1,exp1,RBrack1);
                 }
             }
@@ -1169,33 +1191,42 @@ public class Parser {
 
     private AddExp parseAddExp() {
         //AddExp → MulExp
-        //AddExp → MulExp ('+' | '−') AddExp
+        //AddExp → AddExp ('+' | '−') MulExp
+
 
         MulExp mulExp = parseMulExp();
+        AddExp addExp = new AddExp(mulExp);
 
-        if (curToken.getTokenType().equals(TokenType.PLUS) || curToken.getTokenType().equals(TokenType.MINU)) {
+        while (curToken.getTokenType().equals(TokenType.PLUS) || curToken.getTokenType().equals(TokenType.MINU)) {
             //MulExp ('+' | '−') AddExp
             Token op = setTokenAndNext();
-            AddExp addExp = parseAddExp();
-            return new AddExp(mulExp, op, addExp);
+            mulExp = parseMulExp();
+            addExp = new AddExp(mulExp, op, addExp);
+            //AddExp addExp = parseAddExp();
+            //return new AddExp(mulExp, op, addExp);
         }
-        return new AddExp(mulExp);
+        //return new AddExp(mulExp);
+        return addExp;
     }
 
     private MulExp parseMulExp() {
         // MulExp → UnaryExp
-        // MulExp → UnaryExp ('*' | '/' | '%') MulExp
+        // MulExp → MulExp ('*' | '/' | '%') UnaryExp
 
         UnaryExp unaryExp = parseUnaryExp();
-        if (curToken.getTokenType().equals(TokenType.MULT) ||
+        MulExp mulExp = new MulExp(unaryExp);
+        while (curToken.getTokenType().equals(TokenType.MULT) ||
                 curToken.getTokenType().equals(TokenType.DIV) ||
                 curToken.getTokenType().equals(TokenType.MOD)) {
             //UnaryExp ('*' | '/' | '%') MulExp
             Token op = setTokenAndNext();
-            MulExp mulExp = parseMulExp();
-            return new MulExp(unaryExp, op, mulExp);
+            unaryExp = parseUnaryExp();
+            mulExp = new MulExp(unaryExp, op, mulExp);
+            //MulExp mulExp = parseMulExp();
+            //return new MulExp(unaryExp, op, mulExp);
         }
-        return new MulExp(unaryExp);
+        //return new MulExp(unaryExp);
+        return mulExp;
     }
 
     private UnaryExp parseUnaryExp() {

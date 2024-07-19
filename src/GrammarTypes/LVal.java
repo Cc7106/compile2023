@@ -94,4 +94,12 @@ public class LVal extends Node {
             return 2;
         }
     }
+
+    public Exp getExp1() {
+        return exp1;
+    }
+
+    public Exp getExp2() {
+        return exp2;
+    }
 }

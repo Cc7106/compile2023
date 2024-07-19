@@ -22,6 +22,10 @@ public class ConstDecl extends Node {
         this.semicn = semicn;
     }
 
+    public ArrayList<ConstDef> getConstDef() {
+        return constDef;
+    }
+
     public String toString() {
         StringJoiner output = new StringJoiner("\n");
         output.add(constTk.toString());

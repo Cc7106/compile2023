@@ -18,4 +18,7 @@ public class ConstExp extends Node {
         return output.toString();
     }
 
+    public AddExp getAddExp() {
+        return addExp;
+    }
 }

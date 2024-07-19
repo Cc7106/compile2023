@@ -49,4 +49,16 @@ public class MulExp extends Node {
     public int getDimension() {
         return unaryExp.getDimension();
     }
+
+    public UnaryExp getUnaryExp() {
+        return unaryExp;
+    }
+
+    public Token getOp() {
+        return op;
+    }
+
+    public MulExp getMulExp() {
+        return mulExp;
+    }
 }

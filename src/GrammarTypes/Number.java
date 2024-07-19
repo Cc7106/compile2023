@@ -22,4 +22,8 @@ public class Number extends Node {
     public Token getRParamType() {
         return intConst;
     }
+
+    public Token getIntConst() {
+        return intConst;
+    }
 }
