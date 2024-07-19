@@ -1,3 +1,8 @@
+import GrammarTypes.CompUnit;
+import IR.IRModule;
+import Token.Token;
+import Error.Error;
+
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -5,13 +10,18 @@ import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.StringJoiner;
 
+
 public class IOFiles {
     private String inputCode;
     private FileWriter writer;
+    private FileWriter writer2;
 
     public IOFiles() throws IOException {
         this.inputCode = read();
-        this.writer = new FileWriter(new File("output.txt"));
+        //this.writer = new FileWriter(new File("output.txt"));
+        this.writer = new FileWriter(new File("error.txt"));
+        this.writer2 = new FileWriter(new File("llvm_ir.txt"));
+
     }
 
     public String read() throws IOException {
@@ -25,12 +35,31 @@ public class IOFiles {
         return inputText.toString();
     }
 
-    public void writeToFile(ArrayList<Token> tokenArrayList) throws IOException {
-        for (Token token: tokenArrayList) {
-            writer.write(token.toString() + "\n");
-        }
+//    public void writeToFile(ArrayList<Token> tokenArrayList) throws IOException {
+//        for (Token token: tokenArrayList) {
+//            writer.write(token.toString() + "\n");
+//        }
+//        writer.flush();
+//        writer.close();
+//    }
+
+    public void writeToFile2(CompUnit compUnit) throws IOException {
+        writer.write(compUnit.toString());
         writer.flush();
         writer.close();
+    }
+    public void writeToFile3(ArrayList<Error> errors) throws IOException {
+        for (Error error: errors) {
+            writer.write(error.toString());
+        }
+        writer.flush();
+        writer.close();;
+    }
+
+    public void writeToFile4(IRModule irModule) throws IOException {
+        writer2.write(irModule.toString());
+        writer2.flush();
+        writer2.close();
     }
 
     public String getInputCode() {

@@ -1,0 +1,1337 @@
+import Error.Error;
+import GrammarTypes.*;
+import GrammarTypes.Number;
+import SymbolTable.*;
+import Token.Token;
+import Token.TokenType;
+import Error.*;
+
+import java.util.ArrayList;
+import java.util.Objects;
+
+public class Parser {
+    private ArrayList<Token> allTokenList;
+    private Token curToken;
+    private int curPos = 0;
+    private CompUnit compUnit;
+    private SymbolTable symbolTable;
+    private ErrorHandler errorHandler;
+
+    public Parser(ArrayList<Token> allTokenList) {
+        this.allTokenList = allTokenList;
+        this.curToken = allTokenList.get(0);
+        this.symbolTable = new SymbolTable();
+        this.errorHandler = new ErrorHandler(symbolTable);
+        compUnit = parseCompUnit();
+        }
+
+    private void nextToken() {
+        curPos++;
+        if (curPos < allTokenList.size()) {
+            curToken = allTokenList.get(curPos);
+        }
+    }
+
+    private Token setTokenAndNext() {
+        Token token = curToken;
+        nextToken();
+        return token;
+    }
+
+    private Token preRead() {
+        if (curPos + 1 < allTokenList.size()) {
+            return allTokenList.get(curPos + 1);
+        }
+        return null;
+    }
+
+    private Token prePreRead() {
+        if (curPos + 2 < allTokenList.size()) {
+            return allTokenList.get(curPos + 2);
+        }
+        return null;
+    }
+
+    public CompUnit parseCompUnit() {
+        //CompUnit -> {Decl} {FuncDef} MainFuncDef
+
+        ArrayList<Decl> declList = new ArrayList<>();
+        ArrayList<FuncDef> funcDefList = new ArrayList<>();
+        MainFuncDef mainFuncDef;
+
+        while (!isMainFunc()) {
+            if (curToken.getTokenType().equals(TokenType.INTTK) &&
+                    Objects.requireNonNull(preRead()).getTokenType().equals(TokenType.IDENFR)) {
+
+                //int ident
+                if (Objects.requireNonNull(prePreRead()).getTokenType().equals(TokenType.LPARENT)) {
+                    // '('
+                    funcDefList.add(parseFuncDef());
+                } else if (Objects.requireNonNull(prePreRead()).getTokenType().equals(TokenType.ASSIGN) ||
+                        Objects.requireNonNull(prePreRead()).getTokenType().equals(TokenType.SEMICN) ||
+                        Objects.requireNonNull(prePreRead()).getTokenType().equals(TokenType.LBRACK) ||
+                        Objects.requireNonNull(prePreRead()).getTokenType().equals(TokenType.COMMA)) {
+                    // '[' || '=' || ',' || ';'
+                    declList.add(parseDecl());
+                } else {
+                    error("compUnit");
+                }
+            } else if (curToken.getTokenType().equals(TokenType.CONSTTK)) {
+                //const
+                declList.add(parseDecl());
+            } else if (curToken.getTokenType().equals(TokenType.VOIDTK)) {
+                //void
+                funcDefList.add(parseFuncDef());
+            } else {
+                error("compUnit");
+            }
+        }
+        mainFuncDef = parseMainFuncDef();
+        return new CompUnit(declList, funcDefList, mainFuncDef);
+    }
+
+    private MainFuncDef parseMainFuncDef() {
+        //MainFuncDef -> 'int' 'main' '(' ')' Block
+        Token intTk, mainTk, LParent, RParent;
+        Block block;
+
+        symbolTable.addNewBlock();
+        symbolTable.setCurFuncType(1);
+        if (curToken.getTokenType().equals(TokenType.INTTK)) {
+            intTk = setTokenAndNext();
+        } else {
+           error("mainFuncDef miss int");
+            return null;
+        }
+
+        if (curToken.getTokenType().equals(TokenType.MAINTK)) {
+            mainTk = setTokenAndNext();
+        } else {
+            error("mainFuncDef miss main");
+            return null;
+        }
+
+        if (curToken.getTokenType().equals(TokenType.LPARENT)) {
+            LParent = setTokenAndNext();
+            if (curToken.getTokenType().equals(TokenType.RPARENT)) {
+                RParent = setTokenAndNext();
+            } else {
+                //error("mainFuncDef miss )");
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.j);
+                RParent = new Token(")",errorLine);
+            }
+        } else {
+            error("mainFuncDef miss (");
+            return null;
+        }
+
+        if (curToken.getTokenType().equals(TokenType.LBRACE)) {
+            block = parseBlock();
+            symbolTable.setCurFuncType(0);
+        } else {
+            error("mainFuncDef miss block");
+            return null;
+        }
+
+        MainFuncDef mainFuncDef = new MainFuncDef(intTk, mainTk, LParent, RParent, block);
+        int RBraceLine = allTokenList.get(curPos - 1).getLineNum();
+        errorHandler.checkErrorG(mainFuncDef, RBraceLine);
+        return mainFuncDef;
+    }
+
+    private Boolean isMainFunc() {
+        // int main '('
+        if (curToken.getTokenType().equals(TokenType.INTTK) &&
+                Objects.requireNonNull(preRead()).getTokenType().equals(TokenType.MAINTK) &&
+                Objects.requireNonNull(prePreRead()).getTokenType().equals(TokenType.LPARENT)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public Decl parseDecl() {
+        // Decl → ConstDecl
+        // Decl → VarDecl
+        if (curToken.getTokenType().equals(TokenType.CONSTTK)) {
+            ConstDecl constDecl = parseConstDecl();
+            return new Decl(constDecl);
+        } else if (curToken.getTokenType().equals(TokenType.INTTK)) {
+            VarDecl varDecl = parseVarDecl();
+            return new Decl(varDecl);
+        } else {
+            error("parseDecl");
+            return null;
+        }
+    }
+
+
+    private ConstDecl parseConstDecl() {
+        //ConstDecl → 'const' BType ConstDef { ',' ConstDef } ';'
+        Token constTk, semicn;
+        Btype btype;
+        ArrayList<ConstDef> constDefList = new ArrayList<>();
+        ArrayList<Token> commasList = new ArrayList<>();
+
+        if (curToken.getTokenType().equals(TokenType.CONSTTK)) {
+            constTk = setTokenAndNext();
+            if (curToken.getTokenType().equals(TokenType.INTTK)) {
+                btype = parseBtype();
+                constDefList.add(parseConstDef());
+
+                while (curToken.getTokenType().equals(TokenType.COMMA)) {
+                    commasList.add(setTokenAndNext());
+                    constDefList.add(parseConstDef());
+                }
+
+                if (curToken.getTokenType().equals(TokenType.SEMICN)) {
+                    semicn = setTokenAndNext();
+                    return new ConstDecl(constTk,btype,constDefList,commasList,semicn);
+                } else {
+                    /*
+                    error("constDecl miss ;");
+                    return null;
+                     */
+                    //进入错误处理，但是假装没出错返回
+                    int errorLine = allTokenList.get(curPos-1).getLineNum();
+                    errorHandler.addError(errorLine,ErrorType.i);
+                    return new ConstDecl(constTk,btype,constDefList,commasList,new Token(";",errorLine));
+
+                }
+            } else {
+                error("constDecl miss int");
+                return null;
+            }
+        } else {
+            error("ConstDecl");
+            return null;
+        }
+    }
+
+    private VarDecl parseVarDecl() {
+        //VarDecl -> BType VarDef { ',' VarDef } ';'
+        Btype btype;
+        ArrayList<VarDef> varDefList = new ArrayList<>();
+        ArrayList<Token> commasList = new ArrayList<>();
+        Token semicn;
+        if (curToken.getTokenType().equals(TokenType.INTTK)) {
+            btype = parseBtype();
+            varDefList.add(parseVarDef());
+
+            while (curToken.getTokenType().equals(TokenType.COMMA)) {
+                commasList.add(setTokenAndNext());
+                varDefList.add(parseVarDef());
+            }
+
+            if (curToken.getTokenType().equals(TokenType.SEMICN)) {
+                semicn = setTokenAndNext();
+                return new VarDecl(btype,varDefList,commasList,semicn);
+            } else {
+                /*
+                error("varDecl miss ;");
+                return null;
+                 */
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.i);
+                return new VarDecl(btype,varDefList,commasList,new Token(";",errorLine));
+            }
+        } else {
+           error("varDecl");
+            return null;
+        }
+    }
+
+    private VarDef parseVarDef() {
+
+        // VarDef → Ident { '[' ConstExp ']' }
+        // VarDef → Ident { '[' ConstExp ']' } '=' InitVal
+
+        Token ident, LBrack1 = null, RBrack1 = null, LBrack2 = null, RBrack2 = null, assign = null;
+        ConstExp constExp1 = null, constExp2 = null;
+        InitVal initVal = null;
+
+        if (curToken.getTokenType().equals(TokenType.IDENFR)) {
+            ident = setTokenAndNext();
+
+            //一维数组
+            if (curToken.getTokenType().equals(TokenType.LBRACK)) {
+                LBrack1 = setTokenAndNext(); //'['
+                constExp1 = parseConstExp();
+                if (curToken.getTokenType().equals(TokenType.RBRACK)) {
+                    RBrack1 = setTokenAndNext();  //']'
+                } else {
+                    //error("varDef miss ]");
+                    //进入错误处理，但是假装没出错返回
+                    int errorLine = allTokenList.get(curPos-1).getLineNum();
+                    errorHandler.addError(errorLine,ErrorType.k);
+                    RBrack1 = new Token("]", errorLine);
+                }
+            }
+
+            //二维数组
+            if (curToken.getTokenType().equals(TokenType.LBRACK)) {
+                LBrack2 = setTokenAndNext(); //'['
+                constExp2 = parseConstExp();
+                if (curToken.getTokenType().equals(TokenType.RBRACK)) {
+                    RBrack2 = setTokenAndNext(); //']'
+                } else {
+                    //error("varDef miss ]");
+                    //进入错误处理，但是假装没出错返回
+                    int errorLine = allTokenList.get(curPos-1).getLineNum();
+                    errorHandler.addError(errorLine,ErrorType.k);
+                    RBrack2 = new Token("]", errorLine);
+                }
+            }
+
+            if (curToken.getTokenType().equals(TokenType.ASSIGN)) {
+                assign = setTokenAndNext();
+                initVal = parseInitVal();
+            }
+            VarDef varDef = new VarDef(ident,LBrack1,constExp1,RBrack1,LBrack2,constExp2,RBrack2,assign,initVal);
+
+            if (errorHandler.checkErrorB(ident.getToken(), ident.getLineNum())) {
+                //没出现重定义才加入符号表
+                VarSymbol varSymbol = new VarSymbol(varDef);
+                symbolTable.addVar(varSymbol);
+            }
+            return varDef;
+        } else {
+            error("varDef");
+            return null;
+        }
+    }
+
+    private InitVal parseInitVal() {
+        //InitVal -> Exp | '{' [ InitVal { ',' InitVal } ] '}'
+        Exp exp;
+        Token LBrace, RBrace;
+        ArrayList<InitVal> initValsList = new ArrayList<>();
+        ArrayList<Token> commasList = new ArrayList<>();
+
+        if (!curToken.getTokenType().equals(TokenType.LBRACE)) {
+            exp = parseExp();
+            return new InitVal(exp);
+        } else {
+            //'{' [ InitVal { ',' InitVal } ] '}
+            LBrace = setTokenAndNext(); //'{'
+            initValsList.add(parseInitVal());
+            while (curToken.getTokenType().equals(TokenType.COMMA)) {
+                commasList.add(setTokenAndNext()); //','
+                initValsList.add(parseInitVal());
+            }
+
+            if (curToken.getTokenType().equals(TokenType.RBRACE)) {
+                RBrace = setTokenAndNext(); //'}'
+                return new InitVal(LBrace, initValsList, commasList, RBrace);
+            } else {
+                error("InitVal less }");
+                return null;
+            }
+        }
+    }
+
+    private ConstDef parseConstDef() {
+        // ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal
+        Token ident, LBrack1 = null, RBrack1 = null, LBrack2 = null, RBrack2 = null, assign;
+        ConstExp constExp1 = null, constExp2 = null;
+        ConstInitVal constInitVal;
+
+        if (curToken.getTokenType().equals(TokenType.IDENFR)) {
+            ident = setTokenAndNext();
+
+            //一维数组
+            if (curToken.getTokenType().equals(TokenType.LBRACK)) {
+                LBrack1 = setTokenAndNext(); //'['
+                constExp1 = parseConstExp();
+                if (curToken.getTokenType().equals(TokenType.RBRACK)) {
+                    RBrack1 = setTokenAndNext(); //']'
+                } else {
+                    //error("constDef miss ]");
+                    //进入错误处理，但是假装没出错返回
+                    int errorLine = allTokenList.get(curPos-1).getLineNum();
+                    errorHandler.addError(errorLine, ErrorType.k);
+                    RBrack1 = new Token("]", errorLine);
+                }
+            }
+
+            //二维数组
+            if (curToken.getTokenType().equals(TokenType.LBRACK)) {
+                LBrack2 = setTokenAndNext();  //'['
+                constExp2 = parseConstExp();
+                if (curToken.getTokenType().equals(TokenType.RBRACK)) {
+                    RBrack2 = setTokenAndNext();  // ']'
+                } else {
+                    //error("constDef miss ]");
+                    //进入错误处理，但是假装没出错返回
+                    int errorLine = allTokenList.get(curPos-1).getLineNum();
+                    errorHandler.addError(errorLine, ErrorType.k);
+                    RBrack2 = new Token("]", errorLine);
+                }
+            }
+
+            if (curToken.getTokenType().equals(TokenType.ASSIGN)) {
+                assign = setTokenAndNext();
+                constInitVal = parseConstInitVal();
+            } else {
+                error("constDef miss =");
+                return null;
+            }
+
+            ConstDef constDef = new ConstDef(ident, LBrack1, constExp1, RBrack1, LBrack2, constExp2, RBrack2, assign, constInitVal);
+            if (errorHandler.checkErrorB(ident.getToken(), ident.getLineNum())) {
+                //声明时没出现错误 -重定义
+                VarSymbol varSymbol = new VarSymbol(constDef);
+                symbolTable.addVar(varSymbol);
+            }
+            return constDef;
+
+        } else {
+            error("constDef");
+            return null;
+        }
+
+    }
+
+    private ConstInitVal parseConstInitVal() {
+        // ConstInitVal → ConstExp
+        // ConstInitVal → '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
+        ConstExp constExp;
+        Token LBrace, RBrace;
+        ArrayList<ConstInitVal> constInitValsList = new ArrayList<>();
+        ArrayList<Token> commasList = new ArrayList<>();
+
+        if (!curToken.getTokenType().equals(TokenType.LBRACE)) {
+            constExp = parseConstExp();
+            return new ConstInitVal(constExp);
+        } else {
+            //'{' [ ConstInitVal { ',' ConstInitVal } ] '}'
+            LBrace = setTokenAndNext(); //'{'
+            constInitValsList.add(parseConstInitVal());
+            while (curToken.getTokenType().equals(TokenType.COMMA)) {
+                commasList.add(setTokenAndNext()); //','
+                constInitValsList.add(parseConstInitVal());
+            }
+
+            if (curToken.getTokenType().equals(TokenType.RBRACE)) {
+                RBrace = setTokenAndNext(); //'}'
+                return new ConstInitVal(LBrace, constInitValsList, commasList, RBrace);
+            } else {
+                error("ConstInitVal less }");
+                return null;
+            }
+        }
+    }
+
+    private ConstExp parseConstExp() {
+        //ConstExp -> AddExp
+        AddExp addExp = parseAddExp();
+        return new ConstExp(addExp);
+    }
+
+    private FuncDef parseFuncDef() {
+        //FuncDef -> FuncType Ident '(' [FuncFParams] ')' Block
+        FuncType funcType;
+        Token ident, LParent, RParent;
+        FuncFParams funcFParams = null;
+        Block block;
+        boolean gotError = false; //函数声明是否出现错误 (重定义)
+        int startLine, endLine;
+
+        funcType = parseFuncType();
+        ident = setTokenAndNext();
+        startLine = ident.getLineNum();
+
+        if (!errorHandler.checkErrorB(ident.getToken(), ident.getLineNum())) {
+            //先创建一个varsymbol加入map
+            gotError = true;
+        } else {
+            //先加入符号表
+            VarSymbol varSymbol = new VarSymbol(funcType, ident);
+            symbolTable.addVar(varSymbol);
+        }
+
+        symbolTable.addNewBlock(); //进入新的一个作用域
+        if (funcType.getFuncTypeToken().getTokenType().equals(TokenType.VOIDTK) && gotError) {
+            symbolTable.setCurFuncType(-1);
+        } else if (funcType.getFuncTypeToken().getTokenType().equals(TokenType.VOIDTK)){
+            symbolTable.setCurFuncType(0);
+        } else {
+            symbolTable.setCurFuncType(1);
+        }
+
+        if (curToken.getTokenType().equals(TokenType.LPARENT)) {
+            LParent = setTokenAndNext(); // '('
+
+            if (curToken.getTokenType().equals(TokenType.INTTK)) {
+                funcFParams = parseFuncFParams();
+            }
+
+            if (curToken.getTokenType().equals(TokenType.RPARENT)) {
+                RParent = setTokenAndNext(); //')'
+            } else {
+                /*
+                error("funcDef miss )");
+                return null;
+                 */
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.j);
+                RParent = new Token(")",errorLine);
+
+            }
+        } else {
+            error("funcDef miss (");
+            return null;
+        }
+
+
+        //加入函数表，函数声明成功
+        FuncDef funcDef = new FuncDef(funcType,ident,LParent,funcFParams,RParent);
+        if (!gotError) {
+            Symbol funcSymbol = new FuncSymbol(funcDef);
+            symbolTable.addFunction(funcSymbol);
+        }
+
+
+        if (curToken.getTokenType().equals(TokenType.LBRACE)) {
+            block = parseBlock();
+            symbolTable.setCurFuncType(0);
+            //block里面退出
+        } else {
+            error("funcDef miss block");
+            return null;
+        }
+        funcDef.addBlock(block);
+        endLine = allTokenList.get(curPos - 1).getLineNum();
+         if (!gotError) {
+            int RBraceLine = allTokenList.get(curPos-1).getLineNum();
+            errorHandler.checkErrorG(funcDef, RBraceLine);
+        } else {
+            errorHandler.dltErrorsInFunc(startLine+1, endLine);  //函数声明失败 block内错误无视
+        }
+        return funcDef;
+    }
+
+    private FuncFParams parseFuncFParams() {
+        // FuncFParams -> FuncFParam { ',' FuncFParam }
+        ArrayList<FuncFParam> funcFParamList = new ArrayList<>();
+        ArrayList<Token> commasList = new ArrayList<>();
+
+        if (curToken.getTokenType().equals(TokenType.INTTK)) {
+            funcFParamList.add(parseFuncFParam());
+
+            while (curToken.getTokenType().equals(TokenType.COMMA)) {
+                commasList.add(setTokenAndNext());
+                funcFParamList.add(parseFuncFParam());
+            }
+            return new FuncFParams(funcFParamList, commasList);
+        } else {
+            error("funcFParams");
+            return null;
+        }
+    }
+    private FuncFParam parseFuncFParam() {
+        // FuncFParam → BType Ident
+        // FuncFParam → BType Ident '[' ']'
+        // FuncFParam → BType Ident '[' ']''[' ConstExp ']'
+        Btype btype;
+        Token ident, LBrack1 = null, RBrack1 = null, LBrack2 = null, RBrack2 = null;
+        ConstExp constExp = null;
+        boolean gotError = false; //声明时是否出现错误 重定义
+
+        if (curToken.getTokenType().equals(TokenType.INTTK)) {
+            btype = parseBtype();
+
+            if (curToken.getTokenType().equals(TokenType.IDENFR)) {
+                ident = setTokenAndNext();
+                if (!errorHandler.checkErrorB(ident.getToken(), ident.getLineNum())) {
+                    gotError = true;
+                }
+
+                //一维数组
+                if (curToken.getTokenType().equals(TokenType.LBRACK)) {
+                    LBrack1 = setTokenAndNext();
+                    if (curToken.getTokenType().equals(TokenType.RBRACK)) {
+                        RBrack1 = setTokenAndNext();
+                    } else {
+                        /*
+                        error("funcFParam miss ]");
+                        return null;
+                         */
+                        //进入错误处理，但是假装没出错返回
+                        int errorLine = allTokenList.get(curPos-1).getLineNum();
+                        errorHandler.addError(errorLine, ErrorType.k);
+                        RBrack1 = new Token("]", errorLine);
+
+                    }
+                }
+
+                //二维数组
+                if (curToken.getTokenType().equals(TokenType.LBRACK)) {
+                    LBrack2 = setTokenAndNext();
+                    constExp = parseConstExp();
+                    if (curToken.getTokenType().equals(TokenType.RBRACK)) {
+                        RBrack2 = setTokenAndNext();
+                    } else {
+                        /*
+                        error("funcFParam miss ]");
+                        return null;
+                         */
+                        //进入错误处理，但是假装没出错返回
+                        int errorLine = allTokenList.get(curPos-1).getLineNum();
+                        errorHandler.addError(errorLine, ErrorType.k);
+                        RBrack2 = new Token("]", errorLine);
+
+                    }
+                }
+            } else {
+                error("funcFParam");
+                return null;
+            }
+            FuncFParam funcFParam = new FuncFParam(btype,ident, LBrack1, RBrack1, LBrack2, constExp, RBrack2);
+            if (!gotError) {
+                //声明时没出现错误 -重定义
+                VarSymbol varSymbol = new VarSymbol(funcFParam,btype);
+                symbolTable.addVar(varSymbol);
+            }
+            return funcFParam;
+        } else {
+            error("funcFParam");
+            return null;
+        }
+    }
+
+    private FuncType parseFuncType() {
+        // FuncType -> 'void' | 'int'
+        Token type;
+        if (curToken.getTokenType().equals(TokenType.VOIDTK) ||
+                curToken.getTokenType().equals(TokenType.INTTK) ) {
+            type = setTokenAndNext();
+            return new FuncType(type);
+        } else {
+            error("funcType");
+            return null;
+        }
+    }
+
+    private Block parseBlock() {
+        //Block -> '{' { BlockItem } '}'
+        Token LBrace, RBrace;
+        ArrayList<BlockItem> blockItemsList = new ArrayList<>();
+        if (curToken.getTokenType().equals(TokenType.LBRACE)) {
+
+            LBrace = setTokenAndNext();  //'{'
+
+            while (!curToken.getTokenType().equals(TokenType.RBRACE)) {
+                blockItemsList.add(parseBlockItem());
+            }
+            RBrace = setTokenAndNext();  //'}'
+            symbolTable.quitBlock();
+            return new Block(LBrace, blockItemsList, RBrace);
+        }
+        error("block");
+        return null;
+    }
+
+    private BlockItem parseBlockItem() {
+        // BlockItem -> Decl | Stmt
+        Decl decl;
+        Stmt stmt;
+        if (curToken.getTokenType().equals(TokenType.CONSTTK) ||
+                curToken.getTokenType().equals(TokenType.INTTK)) {
+            decl = parseDecl();
+            return new BlockItem(decl);
+        } else {
+            stmt = parseStmt();
+            return new BlockItem(stmt);
+        }
+    }
+
+    private Stmt parseStmt() {
+        //Stmt -> 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
+        //        | 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
+        //        | 'break' ';' | 'continue' ';'
+        //        | 'return' [Exp] ';'
+        //        | 'printf' '('FormatString { ',' Exp } ')' ';'
+        //         | Block
+        //
+        //          | LVal '=' Exp ';'
+        //          | LVal '=' 'getint' '(' ')' ';'
+        //          | [Exp] ';'
+        //
+
+        if (curToken.getTokenType().equals(TokenType.IFTK)) {
+            //'if' '(' Cond ')' Stmt [ 'else' Stmt ]
+            return IfStmt();
+
+        } else if (curToken.getTokenType().equals(TokenType.FORTK)) {
+            //'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
+            return ForStmt();
+
+        } else if (curToken.getTokenType().equals(TokenType.BREAKTK) || curToken.getTokenType().equals(TokenType.CONTINUETK)) {
+            //'break' ';' | 'continue' ';'
+            Token token = setTokenAndNext();
+            Token semicn;
+            if (curToken.getTokenType().equals(TokenType.SEMICN)) {
+                semicn = setTokenAndNext();
+            } else {
+                /*
+                error("break/continue stmt miss ;");
+                return null;
+                 */
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.i);
+                semicn = new Token(";", errorLine);
+
+            }
+            errorHandler.checkErrorM(token.getLineNum());
+            return new Stmt(token, semicn);
+
+        } else if (curToken.getTokenType().equals(TokenType.RETURNTK)) {
+            //'return' [Exp] ';'
+            Token returnTk, semicn;
+            Exp exp = null;
+            returnTk = setTokenAndNext();
+            if (!curToken.getTokenType().equals(TokenType.SEMICN)) {
+                exp = parseExp();
+            }
+            if (curToken.getTokenType().equals(TokenType.SEMICN)) {
+                semicn = setTokenAndNext();
+            } else {
+                /*
+                error("return stmt miss ;");
+                return null;
+                 */
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.i);
+                semicn = new Token(";", errorLine);
+            }
+            errorHandler.checkErrorF(exp, returnTk.getLineNum());
+            return new Stmt(returnTk, exp, semicn);
+
+        } else if (curToken.getTokenType().equals(TokenType.PRINTFTK)) {
+            // 'printf' '('FormatString { ',' Exp } ')' ';'
+            return printfStmt();
+
+        } else if (curToken.getTokenType().equals(TokenType.LBRACE)) {
+            // Block
+            symbolTable.addNewBlock();
+            Block block = parseBlock();
+            return new Stmt(block);
+        }
+        /*
+         LVal '=' Exp ';'
+         LVal '=' 'getint' '(' ')' ';'
+         [Exp] ';'
+        */
+        if (doLValinStmt()) { //往后扫有出现‘=’
+            // LVal '=' Exp ';'
+            // LVal '=' 'getint' '(' ')' ';'
+            LVal lVal = parseLVal();
+            int lvalLine = allTokenList.get(curPos-1).getLineNum();
+            errorHandler.checkErrorC(lVal.getIdent().getToken(), lvalLine, 0 );
+            Token assign;
+            if (curToken.getTokenType().equals(TokenType.ASSIGN)) {
+                assign = setTokenAndNext();
+                errorHandler.checkErrorH(lVal, lvalLine);
+            } else {
+                error("lvalStmt miss =");
+                return null;
+            }
+
+            if (curToken.getTokenType().equals(TokenType.GETINTTK)) {
+                Token getintTk, LParent, RParent, semicn;
+                getintTk = setTokenAndNext();
+                if (curToken.getTokenType().equals(TokenType.LPARENT)) {
+                    LParent = setTokenAndNext();
+                    if (curToken.getTokenType().equals(TokenType.RPARENT)) {
+                        RParent = setTokenAndNext();
+                    } else {
+                        //error("getintStmt miss )");
+                        //进入错误处理，但是假装没出错返回
+                        int errorLine = allTokenList.get(curPos-1).getLineNum();
+                        errorHandler.addError(errorLine, ErrorType.j);
+                        RParent = new Token(")",errorLine);
+                    }
+                    if (curToken.getTokenType().equals(TokenType.SEMICN)) {
+                        semicn = setTokenAndNext();
+                        return new Stmt(lVal, assign, getintTk,LParent, RParent, semicn);
+                    } else {
+                        /*
+                        error("getintStmt miss ;");
+                        return null;
+                        */
+                        //进入错误处理，但是假装没出错返回
+                        int errorLine = allTokenList.get(curPos-1).getLineNum();
+                        errorHandler.addError(errorLine, ErrorType.i);
+                        return new Stmt(lVal,assign,getintTk,LParent,RParent, new Token(";",errorLine));
+                    }
+                } else {
+                    error("getintStmt miss (");
+                    return null;
+                }
+            } else {
+                Exp exp = parseExp();
+                if (curToken.getTokenType().equals(TokenType.SEMICN)) {
+                    Token semicn = setTokenAndNext();
+                    return new Stmt(lVal, assign, exp, semicn);
+                } else {
+                    //error("lvalExp stmt miss ;");
+                    //return null;
+                    //进入错误处理，但是假装没出错返回
+                    int errorLine = allTokenList.get(curPos-1).getLineNum();
+                    errorHandler.addError(errorLine, ErrorType.i);
+                    return new Stmt(lVal,assign, exp, new Token(";",errorLine));
+                }
+            }
+
+        } else {
+            // [Exp] ';'
+            Exp exp = null;
+            Token semicn;
+            if (!curToken.getTokenType().equals(TokenType.SEMICN)) {
+                exp = parseExp();
+            }
+            if (curToken.getTokenType().equals(TokenType.SEMICN)) {
+                semicn = setTokenAndNext();
+            } else {
+                /*
+                error("ExpStmt miss ;");
+                return null;
+                 */
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.i);
+                return new Stmt(exp, new Token(";",errorLine));
+
+            }
+            return new Stmt(exp,semicn);
+        }
+    }
+
+    private Stmt IfStmt() {
+        //'if' '(' Cond ')' Stmt [ 'else' Stmt ]
+        Token ifTk, LParent, RParent;
+        Token elseTk;
+        Cond cond;
+        Stmt stmt1, stmt2;
+        ifTk = setTokenAndNext();
+        if (curToken.getTokenType().equals(TokenType.LPARENT)) {
+            LParent = setTokenAndNext();
+            cond = parseCond();
+            if (curToken.getTokenType().equals(TokenType.RPARENT)) {
+                RParent = setTokenAndNext();
+                stmt1 = parseStmt();
+            } else {
+                /*
+                error("ifStmt miss )");
+                return null;
+                 */
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.j);
+                RParent = new Token(")",errorLine);
+                stmt1 = parseStmt();
+            }
+        } else {
+            error("ifStmt miss (");
+            return null;
+        }
+
+        if (curToken.getTokenType().equals(TokenType.ELSETK)) {
+            //有else的情况
+            elseTk = setTokenAndNext();
+            stmt2 = parseStmt();
+            return new Stmt(ifTk, LParent, cond, RParent, stmt1, elseTk, stmt2);
+        }
+        return new Stmt(ifTk,LParent,cond,RParent,stmt1);
+    }
+
+    private Stmt ForStmt() {
+        //'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt
+        Token forTk, LParent, semicn1, semicn2, RParent;
+        ForStmt forStmt1 = null, forStmt2 = null;
+        Cond cond = null;
+        Stmt stmt;
+
+        forTk = setTokenAndNext();
+        if (curToken.getTokenType().equals(TokenType.LPARENT)) {
+            LParent = setTokenAndNext();
+
+            if (!curToken.getTokenType().equals(TokenType.SEMICN)) {
+                forStmt1 = parseForStmt();
+            }
+
+            if (curToken.getTokenType().equals(TokenType.SEMICN)) {
+                semicn1 = setTokenAndNext(); //';'
+            } else {
+                error("forStmt miss ;-1");
+                return null;
+            }
+
+            if (!curToken.getTokenType().equals(TokenType.SEMICN)) {
+                cond = parseCond();
+            }
+
+            if (curToken.getTokenType().equals(TokenType.SEMICN)) {
+                semicn2 = setTokenAndNext(); //';'
+            } else {
+                error("forStmt miss ;-2");
+                return null;
+            }
+
+            if (!curToken.getTokenType().equals(TokenType.RPARENT)) {
+                forStmt2 = parseForStmt();
+            }
+
+            if (curToken.getTokenType().equals(TokenType.RPARENT)) {
+                RParent = setTokenAndNext(); //')'
+            } else {
+                error("forStmt miss )");
+                return null;
+            }
+            symbolTable.setInLoop();
+            stmt = parseStmt();
+            symbolTable.setOutLoop();
+        } else {
+            error("forStmt miss (");
+            return null;
+        }
+        return new Stmt(forTk, LParent, forStmt1, semicn1, cond, semicn2, forStmt2, RParent, stmt);
+    }
+
+    private Stmt printfStmt() {
+        // 'printf' '('FormatString { ',' Exp } ')' ';'
+        Token printfTk, LParent, strcon, RParent, semicn;
+        ArrayList<Token> commasList = new ArrayList<>();
+        ArrayList<Exp> expList = new ArrayList<>();
+
+        int printfLine = curToken.getLineNum();
+        printfTk = setTokenAndNext();
+        if (curToken.getTokenType().equals(TokenType.LPARENT)) {
+            LParent = setTokenAndNext();
+        } else {
+            error("printStmt miss (");
+            return null;
+        }
+
+        if (curToken.getTokenType().equals(TokenType.STRCON)) {
+            strcon = setTokenAndNext();
+            errorHandler.checkErrorA(strcon);
+        } else {
+            error("printStmt miss strcon");
+            return null;
+        }
+
+        while (curToken.getTokenType().equals(TokenType.COMMA)) {
+            commasList.add(setTokenAndNext());
+            expList.add(parseExp());
+        }
+
+        if (curToken.getTokenType().equals(TokenType.RPARENT)) {
+            RParent = setTokenAndNext();
+        } else {
+            /*
+            error("printStmt miss )");
+            return null;
+             */
+            //进入错误处理，但是假装没出错返回
+            int errorLine = allTokenList.get(curPos-1).getLineNum();
+            errorHandler.addError(errorLine, ErrorType.j);
+            RParent = new Token(")",errorLine);
+        }
+
+        if (curToken.getTokenType().equals(TokenType.SEMICN)) {
+            semicn = setTokenAndNext();
+        } else {
+            /*
+            error("printStmt miss ;");
+            return null;
+             */
+            //进入错误处理，但是假装没出错返回
+            int errorLine = allTokenList.get(curPos-1).getLineNum();
+            errorHandler.addError(errorLine, ErrorType.i);
+            return new Stmt(printfTk,LParent,strcon,commasList,expList,RParent,new Token(";",errorLine));
+        }
+        Stmt printStmt = new Stmt(printfTk,LParent,strcon,commasList,expList,RParent,semicn);
+        errorHandler.checkErrorL(printStmt, printfLine);
+        return printStmt;
+    }
+
+    private Cond parseCond() {
+        LOrExp lOrExp = parseLOrExp();
+        return new Cond(lOrExp);
+    }
+
+    private LOrExp parseLOrExp() {
+        //LOrExp -> LAndExp | LAndExp '||' LOrExp
+        LAndExp lAndExp;
+        Token or;
+        LOrExp lOrExp;
+        lAndExp = parseLAndExp();
+        lOrExp = new LOrExp(lAndExp);
+        while (curToken.getTokenType().equals(TokenType.OR)) {
+            or = setTokenAndNext();
+//            lOrExp = parseLOrExp();
+//            return new LOrExp(lAndExp, or, lOrExp);
+            lAndExp = parseLAndExp();
+            lOrExp = new LOrExp(lAndExp, or, lOrExp);
+        }
+        //return new LOrExp(lAndExp);
+        return lOrExp;
+    }
+
+    private LAndExp parseLAndExp() {
+        //LAndExp -> EqExp |EqExp '&&' LAndExp
+        EqExp eqExp;
+        Token and;
+        LAndExp lAndExp;
+        eqExp = parseEqExp();
+        lAndExp = new LAndExp(eqExp);
+        while (curToken.getTokenType().equals(TokenType.AND)) {
+            and = setTokenAndNext();
+//            lAndExp = parseLAndExp();
+//            return new LAndExp(eqExp, and, lAndExp);
+            eqExp = parseEqExp();
+            lAndExp = new LAndExp(eqExp, and, lAndExp);
+        }
+//        return new LAndExp(eqExp);
+        return lAndExp;
+    }
+
+    private EqExp parseEqExp() {
+        //EqExp -> RelExp |  RelExp ('==' | '!=') EqExp
+        RelExp relExp;
+        Token token;
+        EqExp eqExp;
+        relExp = parseRelExp();
+        eqExp = new EqExp(relExp);
+        while (curToken.getTokenType().equals(TokenType.EQL) ||
+                curToken.getTokenType().equals(TokenType.NEQ)) {
+            token = setTokenAndNext();
+//            eqExp = parseEqExp();
+//            return new EqExp(relExp, token, eqExp);
+            relExp = parseRelExp();
+            eqExp = new EqExp(relExp, token, eqExp);
+        }
+//        return new EqExp(relExp);
+        return eqExp;
+    }
+
+    private RelExp parseRelExp() {
+        //RelExp -> AddExp |AddExp ('<' | '>' | '<=' | '>=') RelExp
+        AddExp addExp;
+        Token token;
+        RelExp relExp;
+        addExp = parseAddExp();
+        relExp = new RelExp(addExp);
+        while (curToken.getTokenType().equals(TokenType.GEQ) || curToken.getTokenType().equals(TokenType.GRE) ||
+                curToken.getTokenType().equals(TokenType.LEQ) || curToken.getTokenType().equals(TokenType.LSS) ) {
+            token = setTokenAndNext();
+            addExp = parseAddExp();
+            relExp = new RelExp(addExp, token, relExp);
+           // relExp = parseRelExp();
+            //return new RelExp(addExp, token, relExp);
+        }
+        //return new RelExp(addExp);
+        return relExp;
+    }
+
+    private ForStmt parseForStmt() {
+        //LVal '=' Exp
+        LVal lVal;
+        Token assign;
+        Exp exp;
+        lVal = parseLVal();
+        int lValLine = allTokenList.get(curPos-1).getLineNum();
+        if (curToken.getTokenType().equals(TokenType.ASSIGN)) {
+            assign = setTokenAndNext();
+        } else {
+            error("forStmt miss =");
+            return null;
+        }
+        exp = parseExp();
+        errorHandler.checkErrorH(lVal, lValLine);
+        return new ForStmt(lVal,assign,exp);
+    }
+
+    private Boolean doLValinStmt() {
+        // LVal '=' Exp ';'
+        // LVal '=' 'getint' '(' ')' ';'
+        // [Exp] ';'
+        int temp = 0;
+        while (curPos + temp < allTokenList.size() &&
+                !allTokenList.get(curPos + temp).getTokenType().equals(TokenType.SEMICN)) {
+            //';'前有没有出现‘=’
+            if (allTokenList.get(curPos + temp).getTokenType().equals(TokenType.ASSIGN)) {
+                //do LVal
+                return true;
+            }
+            temp++;
+        }
+        return false;
+    }
+
+    private Btype parseBtype() {
+        //int
+        Token intTk;
+        if (curToken.getTokenType().equals(TokenType.INTTK)) {
+            intTk = setTokenAndNext();
+            return new Btype(intTk);
+        } else {
+            error("Btype");
+            return null;
+        }
+    }
+
+    public PrimaryExp parsePrimaryExp() {
+        // PrimaryExp → '(' Exp ')'
+        // PrimaryExp → LVal
+        // PrimaryExp → Number
+        if (curToken.getTokenType().equals(TokenType.LPARENT)) {
+            // '(' Exp ')'
+            Token LParent = setTokenAndNext();
+            Exp exp = parseExp();
+            if (curToken.getTokenType().equals(TokenType.RPARENT)) {
+                Token RParent = setTokenAndNext();
+                return new PrimaryExp(LParent,exp,RParent);
+            } else {
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.j);
+                return new PrimaryExp(LParent, exp, new Token(")'", errorLine));
+            }
+        } else if (curToken.getTokenType().equals(TokenType.IDENFR)) {
+            //LVal
+            LVal lVal = parseLVal();
+            int lValLine = allTokenList.get(curPos - 1).getLineNum();
+            errorHandler.checkErrorC(lVal.getIdent().getToken(), lValLine, 0);
+            return new PrimaryExp(lVal);
+        } else if (curToken.getTokenType().equals(TokenType.INTCON)) {
+            //Number
+            Number number = parseNumber();
+            return new PrimaryExp(number);
+        } else {
+            error("primaryExp");
+            return null;
+        }
+
+    }
+
+    private LVal parseLVal() {
+        if (curToken.getTokenType().equals(TokenType.IDENFR)) {
+            Token ident = setTokenAndNext();
+            Token LBrack1, RBrack1, LBrack2, RBrack2;
+            Exp exp1, exp2;
+
+            //一维数组
+            if (curToken.getTokenType().equals(TokenType.LBRACK)) {
+                LBrack1 = setTokenAndNext(); //'['
+                exp1 = parseExp();
+                if (curToken.getTokenType().equals(TokenType.RBRACK)) {
+                    RBrack1 = setTokenAndNext(); //']'
+
+                    //二维数组
+                    if (curToken.getTokenType().equals(TokenType.LBRACK)) {
+                        LBrack2 = setTokenAndNext(); //'['
+                        exp2 = parseExp();
+                        if (curToken.getTokenType().equals(TokenType.RBRACK)) {
+                            RBrack2 = setTokenAndNext(); //']'
+                            return new LVal(ident, LBrack1, exp1, RBrack1, LBrack2, exp2, RBrack2);
+                        } else {
+                            /*
+                            error("LVal less ]");
+                            return null;
+                             */
+                            //进入错误处理，但是假装没出错返回
+                            int errorLine = allTokenList.get(curPos-1).getLineNum();
+                            errorHandler.addError(errorLine, ErrorType.k);
+                            RBrack2 = new Token("]", errorLine);
+                            return new LVal(ident, LBrack1, exp1, RBrack1, LBrack2, exp2, RBrack2);
+                        }
+                    }
+
+                    return new LVal(ident,LBrack1,exp1,RBrack1);
+                } else {
+                    /*
+                    error("LVal less ]");
+                    return null;
+                     */
+                    //进入错误处理，但是假装没出错返回
+                    int errorLine = allTokenList.get(curPos-1).getLineNum();
+                    errorHandler.addError(errorLine, ErrorType.k);
+                    RBrack1 = new Token("]", errorLine);
+                    if (curToken.getTokenType().equals(TokenType.LBRACK)) {
+                        LBrack2 = setTokenAndNext(); //'['
+                        exp2 = parseExp();
+                        if (curToken.getTokenType().equals(TokenType.RBRACK)) {
+                            RBrack2 = setTokenAndNext(); //']'
+                            return new LVal(ident, LBrack1, exp1, RBrack1, LBrack2, exp2, RBrack2);
+                        }
+                    }
+                    return new LVal(ident,LBrack1,exp1,RBrack1);
+                }
+            }
+            return new LVal(ident);
+        } else {
+            error("LVal");
+            return null;
+        }
+    }
+
+    private Exp parseExp() {
+        //Exp → AddExp
+        AddExp addExp = parseAddExp();
+        return new Exp(addExp);
+    }
+
+    private AddExp parseAddExp() {
+        //AddExp → MulExp
+        //AddExp → AddExp ('+' | '−') MulExp
+
+
+        MulExp mulExp = parseMulExp();
+        AddExp addExp = new AddExp(mulExp);
+
+        while (curToken.getTokenType().equals(TokenType.PLUS) || curToken.getTokenType().equals(TokenType.MINU)) {
+            //MulExp ('+' | '−') AddExp
+            Token op = setTokenAndNext();
+            mulExp = parseMulExp();
+            addExp = new AddExp(mulExp, op, addExp);
+            //AddExp addExp = parseAddExp();
+            //return new AddExp(mulExp, op, addExp);
+        }
+        //return new AddExp(mulExp);
+        return addExp;
+    }
+
+    private MulExp parseMulExp() {
+        // MulExp → UnaryExp
+        // MulExp → MulExp ('*' | '/' | '%') UnaryExp
+
+        UnaryExp unaryExp = parseUnaryExp();
+        MulExp mulExp = new MulExp(unaryExp);
+        while (curToken.getTokenType().equals(TokenType.MULT) ||
+                curToken.getTokenType().equals(TokenType.DIV) ||
+                curToken.getTokenType().equals(TokenType.MOD)) {
+            //UnaryExp ('*' | '/' | '%') MulExp
+            Token op = setTokenAndNext();
+            unaryExp = parseUnaryExp();
+            mulExp = new MulExp(unaryExp, op, mulExp);
+            //MulExp mulExp = parseMulExp();
+            //return new MulExp(unaryExp, op, mulExp);
+        }
+        //return new MulExp(unaryExp);
+        return mulExp;
+    }
+
+    private UnaryExp parseUnaryExp() {
+        //UnaryExp → PrimaryExp
+        //UnaryExp → Ident '(' [FuncRParams] ')'
+        //UnaryExp → UnaryOp UnaryExp
+
+        if (curToken.getTokenType().equals(TokenType.IDENFR) &&
+                Objects.requireNonNull(preRead()).getTokenType().equals(TokenType.LPARENT)) {
+            // Ident '(' [FuncRParams] ')'
+            Token ident, LParent, RParent;
+            FuncRParams funcRParams = null;
+            ident = setTokenAndNext();
+            errorHandler.checkErrorC(ident.getToken(), ident.getLineNum(), 1); //检查函数是否声明
+            LParent = setTokenAndNext();  //'('
+
+
+            if (!curToken.getTokenType().equals(TokenType.RPARENT) && !curToken.getTokenType().equals(TokenType.SEMICN)) {
+                //不是')' 1.是参数 2. 无参，且缺')' 所以是';'
+                funcRParams = parseFuncRParams();
+            }
+
+            if (curToken.getTokenType().equals(TokenType.RPARENT)) {
+                RParent = setTokenAndNext(); //')'
+                if(errorHandler.checkErrorD(ident.getToken(), funcRParams, ident.getLineNum())) {
+                    errorHandler.checkErrorE(ident.getToken(), funcRParams, ident.getLineNum());
+                }
+                return new UnaryExp(ident, LParent, funcRParams, RParent);
+            } else {
+                /*
+                error("UnaryExp less )");
+                return null;
+                 */
+                //进入错误处理，但是假装没出错返回
+                int errorLine = allTokenList.get(curPos-1).getLineNum();
+                errorHandler.addError(errorLine, ErrorType.j);
+                return new UnaryExp(ident, LParent, funcRParams, new Token(")",errorLine));
+            }
+
+        } else if (curToken.getTokenType().equals(TokenType.PLUS) || curToken.getTokenType().equals(TokenType.MINU)
+                || curToken.getTokenType().equals(TokenType.NOT)) {
+            //UnaryOp UnaryExp
+            UnaryOp unaryOp = parseUnaryOp();
+            UnaryExp unaryExp = parseUnaryExp();
+            return new UnaryExp(unaryOp, unaryExp);
+        } else if (curToken.getTokenType().equals(TokenType.LPARENT) || curToken.getTokenType().equals(TokenType.IDENFR)
+                || curToken.getTokenType().equals(TokenType.INTCON)) {
+            //PrimaryExp
+            // - > '(' Exp ')' | LVal | Number
+            PrimaryExp primaryExp = parsePrimaryExp();
+            return new UnaryExp(primaryExp);
+        } else {
+            error("unaryExp");
+            return null;
+        }
+    }
+
+    private FuncRParams parseFuncRParams() {
+        // FuncRParams -> Exp { ',' Exp }
+        ArrayList<Exp> expsList = new ArrayList<>();
+        ArrayList<Token> commasList = new ArrayList<>();
+
+        expsList.add(parseExp());
+        while (curToken.getTokenType().equals(TokenType.COMMA)) {
+            commasList.add(setTokenAndNext());
+            expsList.add(parseExp());
+        }
+        return new FuncRParams(expsList, commasList);
+    }
+
+    private UnaryOp parseUnaryOp() {
+        //UnaryOp -> '+' | '−' | '!'
+        Token unaryOp;
+        if (curToken.getTokenType().equals(TokenType.PLUS) ||
+                curToken.getTokenType().equals(TokenType.MINU) ||
+                curToken.getTokenType().equals(TokenType.NOT)) {
+            unaryOp = setTokenAndNext();
+            return new UnaryOp(unaryOp);
+        } else {
+            error("unaryOp");
+            return null;
+        }
+    }
+
+
+    public Number parseNumber() {
+        // Number -> IntConst
+        if (curToken.getTokenType().equals(TokenType.INTCON)) {
+            Token number = setTokenAndNext();
+            return new Number(number);
+        } else {
+            error("Number");
+            return null;
+        }
+    }
+
+    private void error(String type) {
+        System.out.println("error " + type);
+    }
+
+    public CompUnit getCompUnit() {
+        return compUnit;
+    }
+
+    public ArrayList<Error> getErrorsList() {
+        return errorHandler.getErrorsList();
+    }
+}
